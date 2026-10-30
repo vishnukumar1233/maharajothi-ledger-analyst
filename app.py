@@ -11,10 +11,11 @@ import io
 from datetime import datetime, date
 from flask import Flask, request, jsonify, send_from_directory, Response
 
-app = Flask(__name__, static_folder=".", static_url_path="")
-app.config["UPLOAD_FOLDER"] = os.path.join(os.path.dirname(os.path.abspath(__file__)), "uploads")
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+app = Flask(__name__, static_folder=BASE_DIR, static_url_path="")
+app.config["UPLOAD_FOLDER"] = os.path.join(BASE_DIR, "uploads")
 app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024  # 16 MB max upload
-DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "maharajothi.db")
+DB_PATH = os.path.join(BASE_DIR, "maharajothi.db")
 
 os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
 
@@ -93,13 +94,13 @@ init_db()
 @app.route("/")
 def index():
     """Serve the Maharajothi Ledger Single Page Web Application."""
-    return send_from_directory(".", "index.html")
+    return send_from_directory(BASE_DIR, "index.html")
 
 
 @app.route("/<path:path>")
 def static_files(path):
     """Serve static assets like logo images or local scripts."""
-    return send_from_directory(".", path)
+    return send_from_directory(BASE_DIR, path)
 
 
 # ---------------------------------------------------------
