@@ -1,0 +1,2752 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/png" href="logo.png">
+  <title>Maharajothi Ledger - Vehicle Expense, Profit/Loss & Document Management</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#fff7ed',
+              100: '#ffedd5',
+              500: '#f97316',
+              600: '#ea580c',
+              700: '#c2410c',
+              800: '#9a3412',
+              900: '#7c2d12'
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Noto+Sans+Tamil:wght@400;500;600;700&display=swap');
+    body {
+      font-family: 'Inter', 'Noto Sans Tamil', system-ui, -apple-system, sans-serif;
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: rgba(156, 163, 175, 0.5);
+      border-radius: 4px;
+    }
+    @media print {
+      .no-print { display: none !important; }
+      .print-only { display: block !important; }
+      body { background: white !important; color: black !important; }
+      .shadow-sm, .shadow-md, .shadow-lg { box-shadow: none !important; }
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 dark:bg-slate-950 dark:text-slate-100 min-h-screen transition-colors duration-200 flex flex-col">
+
+  <!-- Toast Notification Container -->
+  <div id="toast-container" class="fixed top-4 right-4 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <!-- Confirmation Modal (In-Page, Sandbox Safe) -->
+  <div id="confirm-modal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-900 rounded-2xl max-w-sm w-full p-6 border border-slate-200 dark:border-slate-800 shadow-xl space-y-4">
+      <div class="flex items-center space-x-3 text-amber-500">
+        <svg class="w-6 h-6 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+        </svg>
+        <h4 class="text-sm font-bold text-slate-900 dark:text-white" data-i18n="confirmActionTitle">Confirm Action</h4>
+      </div>
+      <p id="confirm-modal-msg" class="text-xs text-slate-600 dark:text-slate-300">Are you sure you want to proceed?</p>
+      <div class="flex items-center justify-end space-x-2 pt-2">
+        <button id="confirm-modal-no" class="px-3.5 py-1.5 text-xs font-semibold rounded-lg border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition" data-i18n="btnCancel">Cancel</button>
+        <button id="confirm-modal-yes" class="px-4 py-1.5 text-xs font-bold rounded-lg bg-rose-600 hover:bg-rose-700 text-white transition shadow-sm" data-i18n="btnConfirm">Confirm</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Soft Copy Document Viewer Modal -->
+  <div id="doc-viewer-modal" class="fixed inset-0 z-50 bg-slate-900/80 backdrop-blur-sm hidden flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-900 rounded-2xl max-w-2xl w-full border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+      <div class="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-800/60">
+        <div>
+          <h3 class="text-sm font-bold text-slate-900 dark:text-white" id="doc-viewer-title">Vehicle Document Soft Copy</h3>
+          <p class="text-xs text-slate-500 dark:text-slate-400" id="doc-viewer-subtitle">Verified Soft Copy Preview</p>
+        </div>
+        <button id="close-doc-viewer-btn" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+      <div class="p-6 overflow-y-auto flex-1 flex flex-col items-center justify-center bg-slate-100 dark:bg-slate-950/50">
+        <div id="doc-viewer-preview-container" class="max-w-full max-h-[60vh] flex items-center justify-center">
+          <!-- Dynamic Document Display -->
+        </div>
+      </div>
+      <div class="p-4 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-800/60">
+        <span class="text-xs text-slate-500" id="doc-viewer-meta">Valid Digital Copy</span>
+        <button id="doc-viewer-close-btn" class="px-4 py-1.5 text-xs font-semibold rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition" data-i18n="btnClose">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Hidden Compatibility Stubs for Deprecated Logins & WhatsApp -->
+  <div id="admin-modal" class="hidden" style="display:none !important">
+    <div class="bg-white dark:bg-slate-900 rounded-2xl max-w-md w-full border border-slate-200 dark:border-slate-800 shadow-xl overflow-hidden flex flex-col">
+      <div class="p-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-gradient-to-r from-orange-50 to-amber-50 dark:from-slate-800 dark:to-slate-800/60">
+        <div class="flex items-center space-x-2.5">
+          <div class="w-10 h-10 rounded-xl overflow-hidden border border-orange-200 dark:border-slate-700 bg-white p-0.5 shadow-sm flex items-center justify-center shrink-0">
+            <img src="logo.png" alt="Maharajothi Logo" class="w-full h-full object-contain">
+          </div>
+          <div>
+            <h3 class="text-sm font-bold text-slate-900 dark:text-white">WhatsApp Report Settings</h3>
+            <p class="text-xs text-slate-500 dark:text-slate-400">Configure phone number for daily ledger reports</p>
+          </div>
+        </div>
+        <button id="close-admin-modal-btn" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      <div class="p-6 space-y-4">
+        <!-- Hidden Login Form elements for compatibility -->
+        <div id="admin-login-view" class="hidden">
+          <input type="hidden" id="admin-username-input" value="admin">
+          <input type="hidden" id="admin-password-input" value="admin123">
+          <button id="do-admin-login-btn" class="hidden">Login as Admin</button>
+        </div>
+
+        <!-- Direct WhatsApp Settings Form (No Login Required) -->
+        <div id="admin-settings-view" class="space-y-4">
+          <div class="hidden">
+            <span id="admin-logged-in-label">Direct Access</span>
+            <button id="do-admin-logout-btn">Logout</button>
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1" data-i18n="lblAdminName">Administrator Name</label>
+            <input type="text" id="admin-name-setting" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-900 dark:text-white focus:ring-2 focus:ring-orange-500 focus:outline-none">
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-emerald-600 dark:text-emerald-400 mb-1 flex items-center space-x-1.5">
+              <span>📱</span>
+              <span data-i18n="lblAdminWhatsApp">Admin WhatsApp Number (for Daily Reports) *</span>
+            </label>
+            <input type="text" id="admin-whatsapp-setting" placeholder="e.g. 919876543210 or 9876543210" class="w-full bg-emerald-50/40 dark:bg-emerald-950/20 border border-emerald-300 dark:border-emerald-700 rounded-lg px-3 py-2 text-xs font-semibold text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+            <span class="text-[10px] text-slate-400 block mt-1" data-i18n="whatsAppHelp">Enter 10-digit mobile or include country code (e.g. 91 for India). Daily P&L and Analyst Reports will be dispatched to this number.</span>
+          </div>
+
+          <div class="pt-2 flex justify-end space-x-2">
+            <button id="save-admin-settings-btn">Save Settings</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Hidden compatibility button stubs -->
+    <button id="whatsapp-config-btn"><span id="nav-wa-num-label">WhatsApp #</span></button>
+    <button id="admin-portal-btn"><span id="nav-admin-label">Admin Login</span></button>
+    <button id="top-whatsapp-dispatch-btn">WhatsApp Report</button>
+    <button id="report-whatsapp-send-btn">Send to Admin WhatsApp</button>
+  </div>
+
+  <!-- Top Navigation Bar -->
+  <header class="sticky top-0 z-40 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 no-print transition-colors">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <!-- App Brand Logo & Title -->
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 sm:w-11 sm:h-11 rounded-xl overflow-hidden border border-orange-200 dark:border-slate-700 bg-white shadow-md flex items-center justify-center p-0.5 shrink-0">
+          <img src="logo.png" alt="Maharajothi Logo" class="w-full h-full object-contain">
+        </div>
+        <div>
+          <h1 class="text-lg sm:text-xl font-black tracking-tight text-slate-900 dark:text-white" data-i18n="appTitle">Maharajothi Ledger</h1>
+        </div>
+      </div>
+
+      <!-- Actions: Language Toggle, Theme Toggle, Reset Demo -->
+      <div class="flex items-center space-x-2 sm:space-x-2.5">
+
+        <!-- Tamil / English Language Switcher -->
+        <button id="lang-toggle-btn" class="px-2.5 py-1.5 text-xs font-medium rounded-lg border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition flex items-center space-x-1">
+          <svg class="w-4 h-4 text-slate-600 dark:text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129" />
+          </svg>
+          <span id="current-lang-text" class="font-semibold text-orange-600 dark:text-orange-400">தமிழ் (TA)</span>
+        </button>
+
+        <!-- Dark / Light Mode Switcher -->
+        <button id="theme-toggle-btn" class="p-2 text-slate-600 dark:text-slate-300 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition" title="Toggle Theme" aria-label="Toggle Theme">
+          <svg id="theme-moon-icon" class="w-5 h-5 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+          </svg>
+          <svg id="theme-sun-icon" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+          </svg>
+        </button>
+
+        <!-- Reset Sample Data Button -->
+        <button id="reset-sample-btn" class="px-2 py-1.5 text-xs text-slate-500 hover:text-red-600 rounded-lg border border-slate-200 dark:border-slate-800 transition hidden md:inline-flex items-center space-x-1" title="Reset to Demo Data">
+          <span data-i18n="resetData">Clear Data</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex space-x-1 sm:space-x-4 border-t border-slate-100 dark:border-slate-800/80 overflow-x-auto custom-scrollbar">
+      <button class="nav-tab active-tab py-3 px-3 text-xs sm:text-sm font-medium border-b-2 border-orange-600 text-orange-600 dark:text-orange-400 flex items-center space-x-2 whitespace-nowrap transition" data-view="dashboard">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z" />
+        </svg>
+        <span data-i18n="navDashboard">Dashboard & Analytics</span>
+      </button>
+
+      <button class="nav-tab py-3 px-3 text-xs sm:text-sm font-medium border-b-2 border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 flex items-center space-x-2 whitespace-nowrap transition" data-view="expenses">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        <span data-i18n="navExpenses">Daily Transactions & P&L</span>
+      </button>
+
+      <button class="nav-tab py-3 px-3 text-xs sm:text-sm font-medium border-b-2 border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 flex items-center space-x-2 whitespace-nowrap transition" data-view="vehicles">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" />
+        </svg>
+        <span data-i18n="navVehicles">Vehicles & Documents</span>
+      </button>
+
+      <button class="nav-tab py-3 px-3 text-xs sm:text-sm font-medium border-b-2 border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 flex items-center space-x-2 whitespace-nowrap transition" data-view="reports">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+        </svg>
+        <span data-i18n="navReports">Data Analyst Report</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-1 w-full">
+
+    <!-- ==================== VIEW 1: DASHBOARD & ANALYTICS ==================== -->
+    <section id="view-dashboard" class="space-y-6">
+      
+      <!-- Top Alert Banner for Expiring Documents if any -->
+      <div id="doc-expiry-alert-banner" class="hidden rounded-xl bg-amber-500/10 border border-amber-500/30 p-4 text-amber-800 dark:text-amber-200 flex items-center justify-between">
+        <div class="flex items-center space-x-3">
+          <span class="p-2 rounded-lg bg-amber-500/20 text-amber-600 dark:text-amber-400">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+          </span>
+          <div>
+            <p class="text-sm font-semibold" data-i18n="docExpiryNoticeTitle">Vehicle Soft Copy Documents Renewal Needed!</p>
+            <p id="doc-expiry-alert-msg" class="text-xs text-amber-700 dark:text-amber-300">RC Book, Insurance, PUCC or Permits expired or expiring soon.</p>
+          </div>
+        </div>
+        <button id="view-expiring-docs-btn" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-amber-600 text-white hover:bg-amber-700 transition" data-i18n="checkDocs">Check Documents</button>
+      </div>
+
+      <!-- Filter Bar: Vehicle Filter & Date Range -->
+      <div class="bg-white dark:bg-slate-900 rounded-xl p-4 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div class="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1" data-i18n="filterVehicle">Filter by Vehicle</label>
+            <select id="dashboard-vehicle-filter" class="w-full sm:w-48 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 text-xs rounded-lg px-3 py-2 focus:ring-2 focus:ring-orange-500 focus:outline-none">
+              <option value="ALL">All Vehicles</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1" data-i18n="filterPeriod">Time Horizon</label>
+            <select id="dashboard-period-filter" class="w-full sm:w-40 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 text-xs rounded-lg px-3 py-2 focus:ring-2 focus:ring-orange-500 focus:outline-none">
+              <option value="ALL">All Time</option>
+              <option value="THIS_MONTH">This Month</option>
+              <option value="LAST_7">Last 7 Days</option>
+              <option value="TODAY">Today</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Quick Action Buttons -->
+        <div class="flex items-center space-x-2 w-full sm:w-auto justify-end">
+          <button id="quick-add-transaction-btn" class="px-3.5 py-2 text-xs font-semibold rounded-lg bg-orange-600 hover:bg-orange-700 text-white transition flex items-center space-x-1.5 shadow-sm">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+            </svg>
+            <span data-i18n="newEntryBtn">+ New Daily Entry</span>
+          </button>
+          <button id="quick-add-vehicle-btn" class="px-3.5 py-2 text-xs font-semibold rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition flex items-center space-x-1.5">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+            <span data-i18n="newVehicleBtn">+ Vehicle</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- KPI Executive Metric Cards (Data Analyst format) -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <!-- Revenue Card -->
+        <div class="bg-white dark:bg-slate-900 rounded-xl p-5 border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400" data-i18n="kpiRevenue">Total Revenue</span>
+            <span class="p-2 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 11l5-5m0 0l5 5m-5-5v12" />
+              </svg>
+            </span>
+          </div>
+          <div class="mt-3 flex items-baseline justify-between">
+            <div class="text-2xl font-bold text-slate-900 dark:text-white" id="kpi-total-revenue">₹0</div>
+          </div>
+          <p class="mt-1 text-xs text-slate-400" data-i18n="kpiRevenueSub">Gross freight & fare collection</p>
+        </div>
+
+        <!-- Total Expenses Card -->
+        <div class="bg-white dark:bg-slate-900 rounded-xl p-5 border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400" data-i18n="kpiExpense">Total Expenses</span>
+            <span class="p-2 rounded-lg bg-rose-50 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 13l-5 5m0 0l-5-5m5 5V6" />
+              </svg>
+            </span>
+          </div>
+          <div class="mt-3 flex items-baseline justify-between">
+            <div class="text-2xl font-bold text-rose-600 dark:text-rose-400" id="kpi-total-expense">₹0</div>
+          </div>
+          <p class="mt-1 text-xs text-slate-400" data-i18n="kpiExpenseSub">Diesel, Wages, Toll, Repairs & Permits</p>
+        </div>
+
+        <!-- Net Profit / Loss Card -->
+        <div class="bg-white dark:bg-slate-900 rounded-xl p-5 border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400" data-i18n="kpiProfitLoss">Net P&L</span>
+            <span id="kpi-profit-icon-container" class="p-2 rounded-lg bg-orange-50 dark:bg-orange-950/50 text-orange-600 dark:text-orange-400">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+              </svg>
+            </span>
+          </div>
+          <div class="mt-3 flex items-baseline justify-between">
+            <div class="text-2xl font-bold text-emerald-600 dark:text-emerald-400" id="kpi-net-profit">₹0</div>
+            <span id="kpi-profit-badge" class="px-2 py-0.5 text-xs font-bold rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300">0%</span>
+          </div>
+          <p class="mt-1 text-xs text-slate-400" data-i18n="kpiProfitSub">Net profit margin percentage</p>
+        </div>
+
+        <!-- Fleet Health & Compliance Card -->
+        <div class="bg-white dark:bg-slate-900 rounded-xl p-5 border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400" data-i18n="kpiCompliance">Fleet Status</span>
+            <span class="p-2 rounded-lg bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+              </svg>
+            </span>
+          </div>
+          <div class="mt-3 flex items-baseline justify-between">
+            <div class="text-2xl font-bold text-slate-900 dark:text-white" id="kpi-fleet-count">0 Vehicles</div>
+          </div>
+          <p class="mt-1 text-xs text-amber-600 dark:text-amber-400 font-medium" id="kpi-doc-status-text">0 doc alerts</p>
+        </div>
+      </div>
+
+      <!-- Graphs Section (Chart.js) -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- 1. Revenue vs Expense vs Net Profit Trend Chart (Span 2) -->
+        <div class="lg:col-span-2 bg-white dark:bg-slate-900 rounded-xl p-5 border border-slate-200 dark:border-slate-800 shadow-sm">
+          <div class="flex items-center justify-between mb-4">
+            <div>
+              <h3 class="text-sm font-bold text-slate-900 dark:text-white flex items-center space-x-2">
+                <span data-i18n="chartTrendTitle">Daily P&L Performance Trend</span>
+              </h3>
+              <p class="text-xs text-slate-400" data-i18n="chartTrendSubtitle">Revenue vs Total Expenses vs Net Profit over time</p>
+            </div>
+            <div class="flex items-center space-x-2 text-xs">
+              <span class="inline-flex items-center text-slate-500"><span class="w-3 h-3 rounded-full bg-emerald-500 mr-1"></span><span data-i18n="labelRevenue">Revenue</span></span>
+              <span class="inline-flex items-center text-slate-500"><span class="w-3 h-3 rounded-full bg-rose-500 mr-1"></span><span data-i18n="labelExpense">Expense</span></span>
+              <span class="inline-flex items-center text-slate-500"><span class="w-3 h-3 rounded-full bg-orange-500 mr-1"></span><span data-i18n="labelNetProfit">Profit</span></span>
+            </div>
+          </div>
+          <div class="relative h-72">
+            <canvas id="trendChart"></canvas>
+          </div>
+        </div>
+
+        <!-- 2. Expense Category Breakdown Donut Chart (Span 1) -->
+        <div class="bg-white dark:bg-slate-900 rounded-xl p-5 border border-slate-200 dark:border-slate-800 shadow-sm">
+          <div class="flex items-center justify-between mb-4">
+            <div>
+              <h3 class="text-sm font-bold text-slate-900 dark:text-white" data-i18n="chartExpenseTitle">Expense Category Breakdown</h3>
+              <p class="text-xs text-slate-400" data-i18n="chartExpenseSubtitle">Distribution of operational costs</p>
+            </div>
+          </div>
+          <div class="relative h-72 flex items-center justify-center">
+            <canvas id="expenseCategoryChart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- Vehicle Profitability Comparison Bar Chart -->
+      <div class="bg-white dark:bg-slate-900 rounded-xl p-5 border border-slate-200 dark:border-slate-800 shadow-sm">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h3 class="text-sm font-bold text-slate-900 dark:text-white" data-i18n="chartVehicleProfitTitle">Vehicle-wise Profit & Loss Comparison</h3>
+            <p class="text-xs text-slate-400" data-i18n="chartVehicleProfitSubtitle">Comparison across Tractor, JCB, Car, Van & Bus</p>
+          </div>
+        </div>
+        <div class="relative h-72">
+          <canvas id="vehicleProfitChart"></canvas>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ==================== VIEW 2: DAILY EXPENSES & TRANSACTIONS ==================== -->
+    <section id="view-expenses" class="hidden space-y-6">
+      
+      <!-- New Entry Form -->
+      <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+        <div class="p-4 bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+          <div class="flex items-center space-x-2">
+            <span class="p-1.5 rounded-lg bg-orange-100 text-orange-600 dark:bg-orange-900/40 dark:text-orange-300">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+              </svg>
+            </span>
+            <h2 class="text-sm font-bold text-slate-900 dark:text-white" id="entry-form-title" data-i18n="entryFormTitle">Add Daily Trip, Work & Expense Record</h2>
+          </div>
+          <span class="text-xs text-slate-400" data-i18n="autoCalcNotice">Real-time P&L auto calculated</span>
+        </div>
+
+        <form id="transaction-form" class="p-5 space-y-4">
+          <input type="hidden" id="entry-id" value="">
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <!-- Date -->
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1" data-i18n="formDate">Date *</label>
+              <input type="date" id="form-date" required class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-900 dark:text-white focus:ring-2 focus:ring-orange-500 focus:outline-none">
+            </div>
+
+            <!-- Vehicle Selection -->
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1" data-i18n="formVehicle">Vehicle *</label>
+              <select id="form-vehicle" required class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-900 dark:text-white focus:ring-2 focus:ring-orange-500 focus:outline-none">
+                <option value="">Select Vehicle</option>
+              </select>
+            </div>
+
+            <!-- Route / Description -->
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1" data-i18n="formRoute">Work / Route / Site Note</label>
+              <input type="text" id="form-route" placeholder="e.g. Field Plowing / Construction Site Load" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-900 dark:text-white focus:ring-2 focus:ring-orange-500 focus:outline-none">
+            </div>
+
+            <!-- Revenue / Freight Fare -->
+            <div>
+              <label class="block text-xs font-bold text-emerald-600 dark:text-emerald-400 mb-1" data-i18n="formRevenue">Trip Revenue / Rental ₹ *</label>
+              <input type="number" id="form-revenue" min="0" step="any" required placeholder="0.00" class="w-full bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-300 dark:border-emerald-700 rounded-lg px-3 py-2 text-xs font-bold text-emerald-800 dark:text-emerald-300 focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+            </div>
+          </div>
+
+          <!-- Expense Breakdown Fields -->
+          <div class="pt-2 border-t border-slate-100 dark:border-slate-800">
+            <h3 class="text-xs font-bold text-rose-600 dark:text-rose-400 uppercase tracking-wider mb-2" data-i18n="formExpenseBreakdown">Trip & Machine Expenses Breakdown ₹</h3>
+            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+              <div>
+                <label class="block text-[11px] font-medium text-slate-600 dark:text-slate-400 mb-1" data-i18n="expFuel">Fuel (Diesel/Petrol)</label>
+                <input type="number" id="form-exp-fuel" min="0" step="any" placeholder="0" class="calc-expense w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 dark:text-white focus:ring-2 focus:ring-orange-500 focus:outline-none">
+              </div>
+
+              <div>
+                <label class="block text-[11px] font-medium text-slate-600 dark:text-slate-400 mb-1" data-i18n="expBata">Driver / Operator Bata</label>
+                <input type="number" id="form-exp-bata" min="0" step="any" placeholder="0" class="calc-expense w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 dark:text-white focus:ring-2 focus:ring-orange-500 focus:outline-none">
+              </div>
+
+              <div>
+                <label class="block text-[11px] font-medium text-slate-600 dark:text-slate-400 mb-1" data-i18n="expToll">Toll Gate</label>
+                <input type="number" id="form-exp-toll" min="0" step="any" placeholder="0" class="calc-expense w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 dark:text-white focus:ring-2 focus:ring-orange-500 focus:outline-none">
+              </div>
+
+              <div>
+                <label class="block text-[11px] font-medium text-slate-600 dark:text-slate-400 mb-1" data-i18n="expRepair">Repairs & Maintenance</label>
+                <input type="number" id="form-exp-repair" min="0" step="any" placeholder="0" class="calc-expense w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 dark:text-white focus:ring-2 focus:ring-orange-500 focus:outline-none">
+              </div>
+
+              <div>
+                <label class="block text-[11px] font-medium text-slate-600 dark:text-slate-400 mb-1" data-i18n="expPolice">Police / Challan</label>
+                <input type="number" id="form-exp-police" min="0" step="any" placeholder="0" class="calc-expense w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 dark:text-white focus:ring-2 focus:ring-orange-500 focus:outline-none">
+              </div>
+
+              <div>
+                <label class="block text-[11px] font-medium text-slate-600 dark:text-slate-400 mb-1" data-i18n="expMisc">Misc Expenses</label>
+                <input type="number" id="form-exp-misc" min="0" step="any" placeholder="0" class="calc-expense w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 dark:text-white focus:ring-2 focus:ring-orange-500 focus:outline-none">
+              </div>
+            </div>
+          </div>
+
+          <!-- Live Calculation Summary Banner -->
+          <div class="p-3 rounded-lg bg-slate-100 dark:bg-slate-800/80 flex flex-wrap items-center justify-between gap-2 text-xs">
+            <div class="flex items-center space-x-4">
+              <span><strong data-i18n="calcRevenue">Revenue:</strong> <span id="calc-rev-val" class="text-emerald-600 dark:text-emerald-400 font-bold">₹0</span></span>
+              <span><strong data-i18n="calcExpense">Total Exp:</strong> <span id="calc-exp-val" class="text-rose-600 dark:text-rose-400 font-bold">₹0</span></span>
+              <span><strong data-i18n="calcNet">Net Margin:</strong> <span id="calc-net-val" class="font-bold text-slate-700 dark:text-slate-200">₹0 (0%)</span></span>
+            </div>
+            <div class="flex items-center space-x-2">
+              <button type="button" id="form-cancel-btn" class="px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition" data-i18n="btnCancel">Cancel</button>
+              <button type="submit" class="px-4 py-1.5 rounded-lg bg-orange-600 hover:bg-orange-700 text-white font-semibold transition" data-i18n="btnSaveEntry">Save Record</button>
+            </div>
+          </div>
+        </form>
+      </div>
+
+      <!-- Transaction History Table -->
+      <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+        <div class="p-4 border-b border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3">
+          <div>
+            <h3 class="text-sm font-bold text-slate-900 dark:text-white" data-i18n="tableTransTitle">Daily Trip Records & P&L Statement</h3>
+            <p class="text-xs text-slate-400" data-i18n="tableTransSubtitle">Itemized log of vehicle trips and margins</p>
+          </div>
+          <div class="flex items-center space-x-2 w-full sm:w-auto">
+            <input type="text" id="transaction-search" placeholder="Search route, vehicle..." class="w-full sm:w-56 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-orange-500">
+            <button id="export-csv-btn" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition flex items-center space-x-1 whitespace-nowrap">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+              <span data-i18n="btnExportCSV">Export CSV</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="overflow-x-auto custom-scrollbar">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-slate-50 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 uppercase tracking-wider font-semibold border-b border-slate-200 dark:border-slate-800">
+              <tr>
+                <th class="py-3 px-4" data-i18n="thDate">Date</th>
+                <th class="py-3 px-4" data-i18n="thVehicle">Vehicle</th>
+                <th class="py-3 px-4" data-i18n="thRoute">Route / Description</th>
+                <th class="py-3 px-4 text-right" data-i18n="thRevenue">Revenue (₹)</th>
+                <th class="py-3 px-4 text-right" data-i18n="thExpense">Total Exp (₹)</th>
+                <th class="py-3 px-4 text-right" data-i18n="thNetProfit">Net P&L (₹)</th>
+                <th class="py-3 px-4 text-center" data-i18n="thStatus">Status</th>
+                <th class="py-3 px-4 text-center" data-i18n="thActions">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="transactions-table-body" class="divide-y divide-slate-100 dark:divide-slate-800/80">
+              <!-- Dynamically rendered -->
+            </tbody>
+          </table>
+        </div>
+        <div id="no-trans-msg" class="p-8 text-center text-slate-400 hidden" data-i18n="noRecordsFound">No daily records found. Add your first trip above!</div>
+      </div>
+
+    </section>
+
+    <!-- ==================== VIEW 3: VEHICLES & SOFT COPY DOCUMENTS ==================== -->
+    <section id="view-vehicles" class="hidden space-y-6">
+      
+      <!-- Vehicle Management Header & Add Vehicle Trigger -->
+      <div class="bg-white dark:bg-slate-900 rounded-xl p-5 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div>
+          <h2 class="text-base font-bold text-slate-900 dark:text-white" data-i18n="vehicleMgmtTitle">Fleet Vehicles & Soft Copy Document Compliance</h2>
+          <p class="text-xs text-slate-400" data-i18n="vehicleMgmtSubtitle">Tractor, JCB, Car, Van & Bus Soft Copy Uploads (RC, Insurance, PUCC, Permit)</p>
+        </div>
+        <button id="open-vehicle-modal-btn" class="px-4 py-2 text-xs font-semibold rounded-lg bg-orange-600 hover:bg-orange-700 text-white transition flex items-center space-x-1.5 shadow-sm">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+          </svg>
+          <span data-i18n="addNewVehicleBtn">+ Register New Vehicle</span>
+        </button>
+      </div>
+
+      <!-- Vehicle Card Grid -->
+      <div id="vehicles-card-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <!-- Rendered dynamically -->
+      </div>
+      <div id="no-vehicles-msg" class="p-12 text-center text-slate-400 hidden" data-i18n="noVehiclesFound">No vehicles registered yet. Click "+ Register New Vehicle" to add one!</div>
+
+    </section>
+
+    <!-- ==================== VIEW 4: DATA ANALYST REPORT ==================== -->
+    <section id="view-reports" class="hidden space-y-6">
+      
+      <!-- Report Header & Actions -->
+      <div class="bg-white dark:bg-slate-900 rounded-xl p-5 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4 no-print">
+        <div>
+          <div class="flex items-center space-x-2">
+            <span class="px-2.5 py-0.5 text-xs font-bold rounded-md bg-orange-100 text-orange-700 dark:bg-orange-950/60 dark:text-orange-300 uppercase tracking-wider" data-i18n="reportBadge">Executive Audit</span>
+            <h2 class="text-base font-bold text-slate-900 dark:text-white" data-i18n="reportTitle">Maharajothi Ledger - Financial & Operational Analytics Report</h2>
+          </div>
+          <p class="text-xs text-slate-400 mt-1" data-i18n="reportSubtitle">Comprehensive Data Analyst performance review and cost driver audit</p>
+        </div>
+        <div class="flex items-center space-x-2">
+          <button id="print-report-btn" class="px-4 py-2 text-xs font-semibold rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white transition flex items-center space-x-1.5 shadow-sm">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+            </svg>
+            <span data-i18n="btnPrintReport">Print / Export PDF</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Formal Analyst Report Layout -->
+      <div id="analyst-report-content" class="bg-white dark:bg-slate-900 rounded-xl p-6 sm:p-8 border border-slate-200 dark:border-slate-800 shadow-sm space-y-8">
+        
+        <!-- Report Header Section -->
+        <div class="border-b border-slate-200 dark:border-slate-800 pb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div class="flex items-center space-x-3.5">
+            <div class="w-14 h-14 sm:w-16 sm:h-16 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-white p-0.5 shadow-sm shrink-0">
+              <img src="logo.png" alt="Maharajothi Logo" class="w-full h-full object-contain">
+            </div>
+            <div>
+              <h1 class="text-xl font-extrabold text-slate-900 dark:text-white tracking-tight" data-i18n="reportDocumentTitle">MAHARAJOTHI LEDGER - FINANCIAL HEALTH & COST EFFICIENCY REPORT</h1>
+              <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Generated by Maharajothi Analyst Engine • <span id="report-timestamp"></span></p>
+            </div>
+          </div>
+          <div class="text-right">
+            <span class="inline-block px-3 py-1 rounded-full text-xs font-bold" id="report-overall-rating-badge">ANALYSIS ACTIVE</span>
+          </div>
+        </div>
+
+        <!-- Section 1: Executive Summary -->
+        <div class="space-y-3">
+          <h3 class="text-xs font-bold uppercase tracking-wider text-orange-600 dark:text-orange-400 flex items-center space-x-2">
+            <span>1.0</span> <span data-i18n="secExecutiveSummary">Executive Summary & High-Level KPIs</span>
+          </h3>
+          <p class="text-xs text-slate-600 dark:text-slate-300 leading-relaxed" id="report-summary-text">
+            Evaluating historical trip telemetry and expense allocations across all registered vehicles.
+          </p>
+
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-2">
+            <div class="p-3 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-800">
+              <span class="text-[11px] font-semibold text-slate-400 block" data-i18n="repGrossRevenue">Gross Revenue</span>
+              <span class="text-base font-bold text-slate-900 dark:text-white mt-1 block" id="rep-rev">₹0</span>
+            </div>
+            <div class="p-3 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-800">
+              <span class="text-[11px] font-semibold text-slate-400 block" data-i18n="repOperatingExp">Operating Expenses</span>
+              <span class="text-base font-bold text-rose-600 dark:text-rose-400 mt-1 block" id="rep-exp">₹0</span>
+            </div>
+            <div class="p-3 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-800">
+              <span class="text-[11px] font-semibold text-slate-400 block" data-i18n="repNetProfit">Net Profit</span>
+              <span class="text-base font-bold text-emerald-600 dark:text-emerald-400 mt-1 block" id="rep-net">₹0</span>
+            </div>
+            <div class="p-3 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-800">
+              <span class="text-[11px] font-semibold text-slate-400 block" data-i18n="repProfitMargin">Net Margin %</span>
+              <span class="text-base font-bold text-orange-600 dark:text-orange-400 mt-1 block" id="rep-margin">0%</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Section 2: Vehicle-wise Performance Matrix Table -->
+        <div class="space-y-3">
+          <h3 class="text-xs font-bold uppercase tracking-wider text-orange-600 dark:text-orange-400 flex items-center space-x-2">
+            <span>2.0</span> <span data-i18n="secVehicleMatrix">Vehicle-wise Performance & Profitability Matrix</span>
+          </h3>
+          <div class="overflow-x-auto border border-slate-200 dark:border-slate-800 rounded-lg">
+            <table class="w-full text-xs text-left">
+              <thead class="bg-slate-50 dark:bg-slate-800 font-semibold text-slate-600 dark:text-slate-300">
+                <tr>
+                  <th class="py-2.5 px-3" data-i18n="tblVehicleNo">Vehicle Reg #</th>
+                  <th class="py-2.5 px-3" data-i18n="tblType">Type & Driver</th>
+                  <th class="py-2.5 px-3 text-center" data-i18n="tblTrips">Total Trips</th>
+                  <th class="py-2.5 px-3 text-right" data-i18n="tblRev">Revenue (₹)</th>
+                  <th class="py-2.5 px-3 text-right" data-i18n="tblExp">Expenses (₹)</th>
+                  <th class="py-2.5 px-3 text-right" data-i18n="tblProfit">Net Profit (₹)</th>
+                  <th class="py-2.5 px-3 text-right" data-i18n="tblMargin">Margin %</th>
+                  <th class="py-2.5 px-3 text-center" data-i18n="tblDocStatus">Doc Status</th>
+                </tr>
+              </thead>
+              <tbody id="report-vehicle-table-body" class="divide-y divide-slate-100 dark:divide-slate-800">
+                <!-- Dynamically rendered -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Section 3: Cost Driver Analysis & Expense Distribution -->
+        <div class="space-y-3">
+          <h3 class="text-xs font-bold uppercase tracking-wider text-orange-600 dark:text-orange-400 flex items-center space-x-2">
+            <span>3.0</span> <span data-i18n="secCostDrivers">Expense Allocation & Cost Driver Analysis</span>
+          </h3>
+          <div id="report-cost-breakdown-container" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            <!-- Dynamically populated progress bars -->
+          </div>
+        </div>
+
+        <!-- Section 4: Data Analyst Insights & Recommendations -->
+        <div class="space-y-3 pt-2">
+          <h3 class="text-xs font-bold uppercase tracking-wider text-orange-600 dark:text-orange-400 flex items-center space-x-2">
+            <span>4.0</span> <span data-i18n="secRecommendations">Analyst Recommendations & Action Plan</span>
+          </h3>
+          <div id="report-recommendations-list" class="space-y-2 text-xs text-slate-600 dark:text-slate-300">
+            <!-- Dynamically generated actionable insights -->
+          </div>
+        </div>
+
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- ==================== MODAL: ADD / EDIT VEHICLE & UPLOAD SOFT COPY ==================== -->
+  <div id="vehicle-modal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-900 rounded-2xl max-w-2xl w-full border border-slate-200 dark:border-slate-800 shadow-xl overflow-hidden flex flex-col max-h-[92vh]">
+      <div class="p-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-800/50">
+        <div>
+          <h3 class="text-sm font-bold text-slate-900 dark:text-white" id="vehicle-modal-title" data-i18n="modalVehicleTitle">Vehicle Registration & Soft Copy Document Upload</h3>
+          <p class="text-xs text-slate-400" data-i18n="modalVehicleSubtitle">Upload soft copy (Image/PDF) for RC, Insurance, PUCC & Permit</p>
+        </div>
+        <button id="close-vehicle-modal-btn" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      <form id="vehicle-form" class="p-5 overflow-y-auto custom-scrollbar space-y-4">
+        <input type="hidden" id="vehicle-form-id" value="">
+
+        <!-- Basic Vehicle Details -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1" data-i18n="vehNumber">Vehicle Number *</label>
+            <input type="text" id="veh-number" required placeholder="e.g. TN 38 AB 1234" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-xs uppercase text-slate-900 dark:text-white focus:ring-2 focus:ring-orange-500 focus:outline-none">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1" data-i18n="vehType">Vehicle Type *</label>
+            <select id="veh-type" required class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-900 dark:text-white focus:ring-2 focus:ring-orange-500 focus:outline-none">
+              <option value="Tractor">Tractor (டிராக்டர்)</option>
+              <option value="JCB">JCB (ஜேசிபி / எக்ஸ்கவேட்டர்)</option>
+              <option value="Car">Car (கார்)</option>
+              <option value="Van">Van (வேன்)</option>
+              <option value="Bus">Bus (பேருந்து)</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1" data-i18n="vehModel">Model & Make</label>
+            <input type="text" id="veh-model" placeholder="e.g. Mahindra 575 / JCB 3DX / Innova" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-900 dark:text-white focus:ring-2 focus:ring-orange-500 focus:outline-none">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1" data-i18n="vehDriver">Assigned Driver / Operator</label>
+            <input type="text" id="veh-driver" placeholder="e.g. Kumar / Murugan" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-900 dark:text-white focus:ring-2 focus:ring-orange-500 focus:outline-none">
+          </div>
+        </div>
+
+        <!-- 1. RC Book Soft Copy Upload -->
+        <div class="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 space-y-2.5">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center space-x-2 text-xs font-bold text-orange-600 dark:text-orange-400">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              <span data-i18n="secRC">RC Book / Fitness Certificate (பதிவுச் சான்றிதழ் RC)</span>
+            </div>
+            <span class="text-[10px] text-slate-400" id="veh-rc-file-status">No file uploaded</span>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-[11px] font-medium text-slate-600 dark:text-slate-400 mb-1" data-i18n="lblUploadRC">Upload RC Soft Copy (Image/PDF) *</label>
+              <input type="file" id="veh-rc-file" accept="image/*,application/pdf" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 dark:text-white focus:outline-none">
+              <input type="hidden" id="veh-rc-num" value="">
+            </div>
+            <div>
+              <label class="block text-[11px] font-medium text-slate-600 dark:text-slate-400 mb-1" data-i18n="lblRCExp">RC / FC Expiry Date *</label>
+              <input type="date" id="veh-rc-exp" required class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 dark:text-white focus:ring-2 focus:ring-orange-500 focus:outline-none">
+            </div>
+          </div>
+        </div>
+
+        <!-- 2. Insurance Policy Soft Copy Upload -->
+        <div class="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 space-y-2.5">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center space-x-2 text-xs font-bold text-emerald-600 dark:text-emerald-400">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+              </svg>
+              <span data-i18n="secInsurance">Insurance Policy (காப்பீடு பாலிசி)</span>
+            </div>
+            <span class="text-[10px] text-slate-400" id="veh-ins-file-status">No file uploaded</span>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-[11px] font-medium text-slate-600 dark:text-slate-400 mb-1" data-i18n="lblUploadIns">Upload Insurance Soft Copy (Image/PDF) *</label>
+              <input type="file" id="veh-ins-file" accept="image/*,application/pdf" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 dark:text-white focus:outline-none">
+              <input type="hidden" id="veh-ins-num" value="">
+            </div>
+            <div>
+              <label class="block text-[11px] font-medium text-slate-600 dark:text-slate-400 mb-1" data-i18n="lblInsExp">Insurance Expiry Date *</label>
+              <input type="date" id="veh-ins-exp" required class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 dark:text-white focus:ring-2 focus:ring-orange-500 focus:outline-none">
+            </div>
+          </div>
+        </div>
+
+        <!-- 3. Pollution Certificate (PUCC) Soft Copy Upload (Applicable ONLY for Van & Bus) -->
+        <div id="veh-pucc-section" class="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 space-y-2.5">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center space-x-2 text-xs font-bold text-amber-600 dark:text-amber-400">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+              </svg>
+              <span data-i18n="secPollution">Pollution Certificate / PUCC (புகைப் பரிசோதனை)</span>
+            </div>
+            <span class="text-[10px] text-slate-400" id="veh-pucc-file-status">No file uploaded</span>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-[11px] font-medium text-slate-600 dark:text-slate-400 mb-1" data-i18n="lblUploadPUCC">Upload PUCC Soft Copy (Image/PDF) *</label>
+              <input type="file" id="veh-pucc-file" accept="image/*,application/pdf" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 dark:text-white focus:outline-none">
+              <input type="hidden" id="veh-pucc-num" value="">
+            </div>
+            <div>
+              <label class="block text-[11px] font-medium text-slate-600 dark:text-slate-400 mb-1" data-i18n="lblPUCCExp">PUCC Expiry Date *</label>
+              <input type="date" id="veh-pucc-exp" required class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 dark:text-white focus:ring-2 focus:ring-orange-500 focus:outline-none">
+            </div>
+          </div>
+        </div>
+
+        <!-- 4. Vehicle Permits Soft Copy Upload (Applicable ONLY for Van & Bus) -->
+        <div id="veh-permit-section" class="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 space-y-2.5">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center space-x-2 text-xs font-bold text-indigo-600 dark:text-indigo-400">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              <span data-i18n="secPermit">Vehicle Permit (வாகன அனுமதிச் சீட்டு)</span>
+            </div>
+            <span class="text-[10px] text-slate-400" id="veh-permit-file-status">No file uploaded</span>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div>
+              <label class="block text-[11px] font-medium text-slate-600 dark:text-slate-400 mb-1" data-i18n="lblPermitType">Permit Scope</label>
+              <select id="veh-permit-type" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 dark:text-white focus:ring-2 focus:ring-orange-500 focus:outline-none">
+                <option value="State Permit (Tamil Nadu)">State Permit (TN)</option>
+                <option value="National Permit (All India)">National Permit</option>
+                <option value="Agricultural / Commercial">Agricultural / Heavy</option>
+                <option value="Local / City Carriage">Local / Carriage</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-[11px] font-medium text-slate-600 dark:text-slate-400 mb-1" data-i18n="lblUploadPermit">Upload Permit Soft Copy</label>
+              <input type="file" id="veh-permit-file" accept="image/*,application/pdf" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 dark:text-white focus:outline-none">
+              <input type="hidden" id="veh-permit-num" value="">
+            </div>
+            <div>
+              <label class="block text-[11px] font-medium text-slate-600 dark:text-slate-400 mb-1" data-i18n="lblPermitExp">Permit Expiry Date *</label>
+              <input type="date" id="veh-permit-exp" required class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 dark:text-white focus:ring-2 focus:ring-orange-500 focus:outline-none">
+            </div>
+          </div>
+        </div>
+
+        <!-- Form Actions -->
+        <div class="pt-3 border-t border-slate-200 dark:border-slate-800 flex items-center justify-end space-x-2">
+          <button type="button" id="modal-cancel-btn" class="px-4 py-2 text-xs font-semibold rounded-lg border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition" data-i18n="btnCancel">Cancel</button>
+          <button type="submit" class="px-5 py-2 text-xs font-bold rounded-lg bg-orange-600 hover:bg-orange-700 text-white transition shadow-sm" data-i18n="btnSaveVehicle">Save Vehicle</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 py-4 px-4 text-center text-xs text-slate-400 no-print">
+    <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
+      <p><span data-i18n="footerText">Maharajothi Ledger • Bilingual Tractor, JCB, Car, Van & Bus Expense & Analytics System</span></p>
+      <p class="text-[11px] text-slate-500">Built with HTML5, Tailwind CSS & Chart.js • Clean, Direct Fleet Management System</p>
+    </div>
+  </footer>
+
+  <!-- ==================== APPLICATION SCRIPT ==================== -->
+  <script>
+    // --- BILINGUAL DICTIONARY (ENGLISH & TAMIL) ---
+    const i18nData = {
+      en: {
+        appTitle: "Maharajothi Ledger",
+        badgeAnalytics: "",
+        appSubtitle: "",
+        confirmActionTitle: "Confirm Action",
+        btnConfirm: "Confirm",
+        btnClose: "Close",
+        navDashboard: "Dashboard & Analytics",
+        navExpenses: "Daily Transactions & P&L",
+        navVehicles: "Vehicles & Soft Copy Docs",
+        navReports: "Data Analyst Report",
+        navAdminLogin: "Admin Login",
+        navSendWhatsApp: "WhatsApp Report",
+        docExpiryNoticeTitle: "Vehicle Soft Copy Documents Renewal Needed!",
+        checkDocs: "Check Documents",
+        filterVehicle: "Filter by Vehicle",
+        allVehicles: "All Vehicles",
+        filterPeriod: "Time Horizon",
+        allTime: "All Time",
+        thisMonth: "This Month",
+        last7Days: "Last 7 Days",
+        today: "Today",
+        newEntryBtn: "+ New Daily Entry",
+        newVehicleBtn: "+ Vehicle",
+        kpiRevenue: "Total Revenue",
+        kpiRevenueSub: "Gross freight & fare collection",
+        kpiExpense: "Total Expenses",
+        kpiExpenseSub: "Diesel, Wages, Toll, Repairs & Permits",
+        kpiProfitLoss: "Net P&L",
+        kpiProfitSub: "Net profit margin percentage",
+        kpiCompliance: "Fleet Status",
+        chartTrendTitle: "Daily P&L Performance Trend",
+        chartTrendSubtitle: "Revenue vs Total Expenses vs Net Profit over time",
+        labelRevenue: "Revenue",
+        labelExpense: "Expense",
+        labelNetProfit: "Profit",
+        chartExpenseTitle: "Expense Category Breakdown",
+        chartExpenseSubtitle: "Distribution of operational costs",
+        chartVehicleProfitTitle: "Vehicle-wise Profit & Loss Comparison",
+        chartVehicleProfitSubtitle: "Comparison across Tractor, JCB, Car, Van & Bus",
+        entryFormTitle: "Add Daily Trip, Work & Expense Record",
+        autoCalcNotice: "Real-time P&L auto calculated",
+        formDate: "Date *",
+        formVehicle: "Vehicle *",
+        selectVehicle: "Select Vehicle",
+        formRoute: "Work / Route / Site Note",
+        formRevenue: "Trip Revenue / Rental ₹ *",
+        formExpenseBreakdown: "Trip & Machine Expenses Breakdown ₹",
+        expFuel: "Fuel (Diesel/Petrol)",
+        expBata: "Driver / Operator Bata",
+        expToll: "Toll Gate",
+        expRepair: "Repairs & Maintenance",
+        expPolice: "Police / Challan",
+        expMisc: "Misc Expenses",
+        calcRevenue: "Revenue:",
+        calcExpense: "Total Exp:",
+        calcNet: "Net Margin:",
+        btnCancel: "Cancel",
+        btnSaveEntry: "Save Record",
+        tableTransTitle: "Daily Trip Records & P&L Statement",
+        tableTransSubtitle: "Itemized log of vehicle trips and margins",
+        btnExportCSV: "Export CSV",
+        thDate: "Date",
+        thVehicle: "Vehicle",
+        thRoute: "Route / Description",
+        thRevenue: "Revenue (₹)",
+        thExpense: "Total Exp (₹)",
+        thNetProfit: "Net P&L (₹)",
+        thStatus: "Status",
+        thActions: "Actions",
+        noRecordsFound: "No daily records found. Add your first trip above!",
+        vehicleMgmtTitle: "Fleet Vehicles & Soft Copy Document Compliance",
+        vehicleMgmtSubtitle: "Tractor, JCB, Car, Van & Bus Soft Copy Uploads (RC, Insurance, PUCC, Permit)",
+        addNewVehicleBtn: "+ Register New Vehicle",
+        noVehiclesFound: "No vehicles registered yet. Click \"+ Register New Vehicle\" to add one!",
+        reportBadge: "Executive Audit",
+        reportTitle: "Maharajothi Ledger - Financial & Operational Analytics Report",
+        reportSubtitle: "Comprehensive Data Analyst performance review and cost driver audit",
+        btnPrintReport: "Print / Export PDF",
+        btnSendToWhatsApp: "Send to Admin WhatsApp",
+        reportDocumentTitle: "MAHARAJOTHI LEDGER - FINANCIAL HEALTH & COST EFFICIENCY REPORT",
+        secExecutiveSummary: "Executive Summary & High-Level KPIs",
+        repGrossRevenue: "Gross Revenue",
+        repOperatingExp: "Operating Expenses",
+        repNetProfit: "Net Profit",
+        repProfitMargin: "Net Margin %",
+        secVehicleMatrix: "Vehicle-wise Performance & Profitability Matrix",
+        tblVehicleNo: "Vehicle Reg #",
+        tblType: "Type & Driver",
+        tblTrips: "Total Trips",
+        tblRev: "Revenue (₹)",
+        tblExp: "Expenses (₹)",
+        tblProfit: "Net Profit (₹)",
+        tblMargin: "Margin %",
+        tblDocStatus: "Doc Status",
+        secCostDrivers: "Expense Allocation & Cost Driver Analysis",
+        secRecommendations: "Analyst Recommendations & Action Plan",
+        modalVehicleTitle: "Vehicle Registration & Soft Copy Document Upload",
+        modalVehicleSubtitle: "Upload soft copy (Image/PDF) for RC, Insurance, PUCC & Permit",
+        vehNumber: "Vehicle Number *",
+        vehType: "Vehicle Type *",
+        vehModel: "Model & Make",
+        vehDriver: "Assigned Driver / Operator",
+        secRC: "RC Book / Fitness Certificate",
+        lblUploadRC: "Upload RC Soft Copy (Image/PDF) *",
+        lblRCExp: "RC / FC Expiry Date *",
+        secInsurance: "Insurance Policy",
+        lblUploadIns: "Upload Insurance Soft Copy (Image/PDF) *",
+        lblInsExp: "Insurance Expiry Date *",
+        secPollution: "Pollution Certificate / PUCC",
+        lblUploadPUCC: "Upload PUCC Soft Copy (Image/PDF) *",
+        lblPUCCExp: "PUCC Expiry Date *",
+        secPermit: "Vehicle Permit",
+        lblPermitType: "Permit Scope",
+        lblUploadPermit: "Upload Permit Soft Copy",
+        lblPermitExp: "Permit Expiry Date *",
+        btnSaveVehicle: "Save Vehicle",
+        resetData: "Clear Data",
+        adminModalTitle: "Admin Portal & WhatsApp Settings",
+        adminModalSubtitle: "Maharajothi Ledger Administration",
+        adminLoginDesc: "Log in as administrator to manage settings and set WhatsApp recipient number.",
+        lblUsername: "Admin Username",
+        lblPassword: "Password",
+        btnLogin: "Login as Admin",
+        btnLogout: "Logout",
+        lblAdminName: "Administrator Name",
+        lblAdminWhatsApp: "Admin WhatsApp Number (for Daily Reports) *",
+        whatsAppHelp: "Enter 10-digit mobile or include country code (e.g. 91 for India). Daily P&L and Analyst Reports will be dispatched to this number.",
+        btnSaveSettings: "Save Settings",
+        footerText: "Maharajothi Ledger • Bilingual Tractor, JCB, Car, Van & Bus Expense & Analytics System"
+      },
+      ta: {
+        appTitle: "மகாராஜோதி லெட்ஜர்",
+        badgeAnalytics: "",
+        appSubtitle: "",
+        confirmActionTitle: "செயலை உறுதிப்படுத்தவும்",
+        btnConfirm: "உறுதிப்படுத்து",
+        btnClose: "மூடுக",
+        navDashboard: "டாஷ்போர்டு & வரைபடங்கள்",
+        navExpenses: "தினசரி வரவு-செலவு & P&L",
+        navVehicles: "வாகனங்கள் & சான்றிதழ் நகல்கள்",
+        navReports: "ஆய்வாளர் அறிக்கை",
+        navAdminLogin: "நிர்வாகி உள்நுழைவு",
+        navSendWhatsApp: "வாட்ஸ்அப் அறிக்கை",
+        docExpiryNoticeTitle: "வாகன ஆவணங்கள் புதுப்பித்தல் தேவை!",
+        checkDocs: "ஆவணங்களை சரிபார்க்க",
+        filterVehicle: "வாகனம் வாரியாக வடிகட்டுக",
+        allVehicles: "அனைத்து வாகனங்கள் (All)",
+        filterPeriod: "கால அவகாசம்",
+        allTime: "முழுவதும்",
+        thisMonth: "இந்த மாதம்",
+        last7Days: "கடைசி 7 நாட்கள்",
+        today: "இன்று",
+        newEntryBtn: "+ புதிய தினசரி பதிவு",
+        newVehicleBtn: "+ வாகனம்",
+        kpiRevenue: "மொத்த வருமானம்",
+        kpiRevenueSub: "வாடகை மற்றும் பயண வருவாய்",
+        kpiExpense: "மொத்த செலவுகள்",
+        kpiExpenseSub: "டீசல், ஓட்டுநர் படி, டோல், பழுது & அனுமதி",
+        kpiProfitLoss: "நிகர இலாபம் / நட்டம்",
+        kpiProfitSub: "நிகர இலாப சதவீத விகிதம்",
+        kpiCompliance: "வாகன நிலை & ஆவணங்கள்",
+        chartTrendTitle: "தினசரி இலாப நட்ட செயல்திறன் போக்கு",
+        chartTrendSubtitle: "வருமானம், செலவுகள் மற்றும் நிகர இலாபத்தின் வரைபடம்",
+        labelRevenue: "வருமானம்",
+        labelExpense: "செலவு",
+        labelNetProfit: "இலாபம்",
+        chartExpenseTitle: "செலவு வகை வாரியான பகுப்பாய்வு",
+        chartExpenseSubtitle: "இயக்க செலவுகளின் பகிர்வு சதவீதம்",
+        chartVehicleProfitTitle: "வாகனம் வாரியான இலாப நட்ட ஒப்பீடு",
+        chartVehicleProfitSubtitle: "டிராக்டர், ஜேசிபி, கார், வேன் & பேருந்து ஒப்பீடு",
+        entryFormTitle: "தினசரி வேலை & செலவு பதிவு (P&L)",
+        autoCalcNotice: "நிகர இலாபம் தானாகக் கணக்கிடப்படுகிறது",
+        formDate: "தேதி *",
+        formVehicle: "வாகனம் *",
+        selectVehicle: "வாகனத்தை தேர்ந்தெடுக்கவும்",
+        formRoute: "வேலை / வழித்தடம் / குறிப்பு",
+        formRevenue: "வருமானம் / வாடகை ₹ *",
+        formExpenseBreakdown: "இயக்கச் செலவுகள் விபரம் ₹",
+        expFuel: "எரிபொருள் (டீசல்/பெட்ரோல்)",
+        expBata: "ஓட்டுநர் படி (சம்பளம்)",
+        expToll: "டோல் கேட் கட்டணம்",
+        expRepair: "பழுது & சர்வீஸ்",
+        expPolice: "காவல்துறை / அபராதம்",
+        expMisc: "இதர செலவுகள்",
+        calcRevenue: "வருமானம்:",
+        calcExpense: "செலவு:",
+        calcNet: "நிகர இலாபம்:",
+        btnCancel: "ரத்து செய்",
+        btnSaveEntry: "பதிவைச் சேமிக்க",
+        tableTransTitle: "தினசரி பயண பதிவுகள் & இலாப நட்ட கணக்கு",
+        tableTransSubtitle: "ஒவ்வொரு வேலையின் விரிவான வரவு-செலவு பட்டியல்",
+        btnExportCSV: "CSV பதிவிறக்கு",
+        thDate: "தேதி",
+        thVehicle: "வாகனம்",
+        thRoute: "வழித்தடம் / விபரம்",
+        thRevenue: "வருமானம் (₹)",
+        thExpense: "செலவு (₹)",
+        thNetProfit: "நிகர P&L (₹)",
+        thStatus: "நிலை",
+        thActions: "செயல்கள்",
+        noRecordsFound: "தினசரி பதிவுகள் ஏதுமில்லை. மேலே புதிய பதிவைச் சேர்க்கவும்!",
+        vehicleMgmtTitle: "வாகனங்கள் & சான்றிதழ் நகல்கள் (Soft Copy)",
+        vehicleMgmtSubtitle: "டிராக்டர், ஜேசிபி, கார், வேன், பேருந்து ஆவணங்கள் (RC, இன்சூரன்ஸ், PUCC, பெர்மிட்)",
+        addNewVehicleBtn: "+ புதிய வாகனம் பதிவு செய்",
+        noVehiclesFound: "வாகனங்கள் எதுவும் பதிவு செய்யப்படவில்லை. \"+ புதிய வாகனம் பதிவு செய்\" கிளிக் செய்யவும்!",
+        reportBadge: "நிர்வாக தணிக்கை",
+        reportTitle: "மகாராஜோதி லெட்ஜர் - நிதி & செயல்பாட்டு பகுப்பாய்வு அறிக்கை",
+        reportSubtitle: "தரவு ஆய்வாளர் கண்ணோட்டத்தில் விரிவான செயல்திறன் ஆய்வு",
+        btnPrintReport: "அறிக்கையை அச்சிடு / PDF",
+        btnSendToWhatsApp: "வாட்ஸ்அப் அறிக்கை அனுப்புக",
+        reportDocumentTitle: "மகாராஜோதி லெட்ஜர் - நிதி நலம் & செலவு திறன் பகுப்பாய்வு அறிக்கை",
+        secExecutiveSummary: "நிர்வாக சுருக்கம் & முக்கிய குறிகாட்டிகள் (KPIs)",
+        repGrossRevenue: "மொத்த வருவாய்",
+        repOperatingExp: "இயக்க செலவுகள்",
+        repNetProfit: "நிகர இலாபம்",
+        repProfitMargin: "இலாப விகிதம் %",
+        secVehicleMatrix: "வாகனம் வாரியான செயல்திறன் & இலாபப் பட்டியல்",
+        tblVehicleNo: "வாகன எண்",
+        tblType: "வகை & ஓட்டுநர்",
+        tblTrips: "மொத்த பயணங்கள்",
+        tblRev: "வருமானம் (₹)",
+        tblExp: "செலவுகள் (₹)",
+        tblProfit: "நிகர இலாபம் (₹)",
+        tblMargin: "விகிதம் %",
+        tblDocStatus: "ஆவண நிலை",
+        secCostDrivers: "செலவுப் பிரிவுகள் & முக்கிய காரணி பகுப்பாய்வு",
+        secRecommendations: "ஆய்வாளரின் பரிந்துரைகள் & செயல் திட்டம்",
+        modalVehicleTitle: "வாகனம் & சான்றிதழ் நகல்கள் பதிவேற்றம்",
+        modalVehicleSubtitle: "RC புத்தகம், இன்சூரன்ஸ், புகை சான்றிதழ் & பெர்மிட் நகல் (Soft Copy) பதிவேற்றவும்",
+        vehNumber: "வாகன பதிவு எண் *",
+        vehType: "வாகன வகை *",
+        vehModel: "மாடல் & தயாரிப்பு",
+        vehDriver: "ஓட்டுநர் / ஆபரேட்டர் பெயர்",
+        secRC: "RC புத்தகம் / ஃபிட்னஸ் சான்றிதழ் (FC)",
+        lblUploadRC: "RC சான்றிதழ் நகல் (Soft Copy) பதிவேற்றவும் *",
+        lblRCExp: "RC / FC காலாவதி தேதி *",
+        secInsurance: "வாகன காப்பீடு (Insurance)",
+        lblUploadIns: "இன்சூரன்ஸ் நகல் (Soft Copy) பதிவேற்றவும் *",
+        lblInsExp: "காப்பீடு காலாவதி தேதி *",
+        secPollution: "புகைப் பரிசோதனை சான்றிதழ் (PUCC)",
+        lblUploadPUCC: "புகை சான்றிதழ் நகல் (Soft Copy) பதிவேற்றவும் *",
+        lblPUCCExp: "PUCC காலாவதி தேதி *",
+        secPermit: "வாகன அனுமதிச் சீட்டு (Permit)",
+        lblPermitType: "அனுமதி வரம்பு",
+        lblUploadPermit: "பெர்மிட் நகல் (Soft Copy) பதிவேற்றவும்",
+        lblPermitExp: "பெர்மிட் காலாவதி தேதி *",
+        btnSaveVehicle: "வாகனத்தை சேமி",
+        resetData: "தரவை அழிக்க",
+        adminModalTitle: "நிர்வாகி தளம் & வாட்ஸ்அப் அமைப்புகள்",
+        adminModalSubtitle: "மகாராஜோதி லெட்ஜர் நிர்வாகம்",
+        adminLoginDesc: "அமைப்புகளை நிர்வகிக்க மற்றும் வாட்ஸ்அப் எண்ணை அமைக்க நிர்வாகியாக உள்நுழையவும்.",
+        lblUsername: "நிர்வாகி பயனர் பெயர்",
+        lblPassword: "கடவுச்சொல்",
+        btnLogin: "உள்நுழைக",
+        btnLogout: "வெளியேறு",
+        lblAdminName: "நிர்வாகி பெயர்",
+        lblAdminWhatsApp: "நிர்வாகி வாட்ஸ்அப் எண் (அறிக்கைகள் பெற) *",
+        whatsAppHelp: "10-இலக்க மொபைல் எண் அல்லது நாட்டின் குறியீட்டுடன் உள்ளிடவும் (எ.கா: 919876543210). தினசரி அறிக்கைகள் இந்த எண்ணுக்கு அனுப்பப்படும்.",
+        btnSaveSettings: "அமைப்புகளை சேமிக்க",
+        footerText: "மகாராஜோதி லெட்ஜர் • டிராக்டர், ஜேசிபி, கார், வேன் & பேருந்து வரவு செலவு பகுப்பாய்வு அமைப்பு"
+      }
+    };
+
+    // Sample Document SVG Placeholder Generator for Soft Copy Previews
+    function makeDocPlaceholderSvg(docName, vehNo, colorHex = "#ea580c") {
+      return `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="280" viewBox="0 0 400 280">
+        <rect width="100%" height="100%" fill="%23f8fafc" stroke="${encodeURIComponent(colorHex)}" stroke-width="6" rx="16"/>
+        <rect x="20" y="20" width="360" height="50" rx="8" fill="${encodeURIComponent(colorHex)}" />
+        <text x="200" y="52" fill="%23ffffff" font-family="sans-serif" font-size="16" font-weight="bold" text-anchor="middle">MAHARAJOTHI OFFICIAL RECORD</text>
+        <circle cx="60" cy="120" r="26" fill="%23e2e8f0"/>
+        <path d="M50 120 L58 128 L72 112" stroke="${encodeURIComponent(colorHex)}" stroke-width="4" fill="none"/>
+        <text x="100" y="115" fill="%231e293b" font-family="sans-serif" font-size="14" font-weight="bold">${encodeURIComponent(docName)}</text>
+        <text x="100" y="135" fill="%2364748b" font-family="sans-serif" font-size="12">Vehicle Reg: ${encodeURIComponent(vehNo)}</text>
+        <line x1="30" y1="165" x2="370" y2="165" stroke="%23cbd5e1" stroke-width="1.5" stroke-dasharray="4"/>
+        <text x="35" y="195" fill="%23334155" font-family="sans-serif" font-size="11">Government of Tamil Nadu Transport & Compliance</text>
+        <text x="35" y="215" fill="%2310b981" font-family="sans-serif" font-size="11" font-weight="bold">✓ Digital Soft Copy Verified & Valid</text>
+        <text x="35" y="245" fill="%2394a3b8" font-family="sans-serif" font-size="10">Maharajothi Ledger System Security Seal</text>
+      </svg>`;
+    }
+
+    // --- INITIAL DEMO FLEET: TRACTOR, JCB, CAR, VAN, BUS ---
+    const initialVehicles = [];
+
+    const initialTransactions = [];
+
+    // --- APPLICATION STATE ---
+    let state = {
+      lang: 'en',
+      theme: 'dark',
+      currentView: 'dashboard',
+      vehicles: [],
+      transactions: [],
+      selectedVehicleFilter: 'ALL',
+      selectedPeriodFilter: 'ALL',
+      pendingConfirmCallback: null,
+      admin: {
+        isLoggedIn: true,
+        name: "Admin Manager",
+        username: "admin",
+        whatsApp: "919876543210" // Default Indian WhatsApp format
+      }
+    };
+
+    // Temporary storage for file uploads in the vehicle modal
+    let pendingUploads = {
+      rc: null,
+      insurance: null,
+      pollution: null,
+      permit: null
+    };
+
+    // --- STORAGE HELPERS WITH TRY/CATCH ---
+    function loadState() {
+      try {
+        // If old demo data is present in localStorage, clear it for a clean slate
+        const existingRaw = localStorage.getItem('maharajothi_vehicles');
+        if (existingRaw && existingRaw.includes('TN 38 AB 1234')) {
+          localStorage.removeItem('maharajothi_vehicles');
+          localStorage.removeItem('maharajothi_transactions');
+        }
+        const savedLang = localStorage.getItem('maharajothi_lang');
+        if (savedLang) state.lang = savedLang;
+
+        const savedTheme = localStorage.getItem('maharajothi_theme');
+        if (savedTheme) {
+          state.theme = savedTheme;
+        } else {
+          state.theme = 'dark';
+        }
+
+        const savedAdmin = localStorage.getItem('maharajothi_admin');
+        if (savedAdmin) state.admin = JSON.parse(savedAdmin);
+
+        const savedVehicles = localStorage.getItem('maharajothi_vehicles');
+        state.vehicles = savedVehicles ? JSON.parse(savedVehicles) : [];
+
+        const savedTransactions = localStorage.getItem('maharajothi_transactions');
+        state.transactions = savedTransactions ? JSON.parse(savedTransactions) : [];
+      } catch (e) {
+        state.vehicles = [...initialVehicles];
+        state.transactions = [...initialTransactions];
+      }
+    }
+
+    function saveState() {
+      try {
+        localStorage.setItem('maharajothi_lang', state.lang);
+        localStorage.setItem('maharajothi_theme', state.theme);
+        localStorage.setItem('maharajothi_admin', JSON.stringify(state.admin));
+        localStorage.setItem('maharajothi_vehicles', JSON.stringify(state.vehicles));
+        localStorage.setItem('maharajothi_transactions', JSON.stringify(state.transactions));
+      } catch (e) {
+        console.warn("Unable to save to localStorage:", e);
+      }
+    }
+
+    // --- IN-PAGE CONFIRMATION MODAL HELPER (SANDBOX SAFE) ---
+    function openConfirmModal(message, onConfirm) {
+      const modal = document.getElementById('confirm-modal');
+      const msgEl = document.getElementById('confirm-modal-msg');
+      msgEl.textContent = message;
+      state.pendingConfirmCallback = onConfirm;
+      syncVanBusDocSections();
+      modal.classList.remove('hidden');
+    }
+
+    function closeConfirmModal() {
+      const modal = document.getElementById('confirm-modal');
+      modal.classList.add('hidden');
+      state.pendingConfirmCallback = null;
+    }
+
+    // --- SOFT COPY DOCUMENT VIEWER MODAL ---
+    function openDocViewer(docType, vehNumber, docObj) {
+      const modal = document.getElementById('doc-viewer-modal');
+      const titleEl = document.getElementById('doc-viewer-title');
+      const subEl = document.getElementById('doc-viewer-subtitle');
+      const metaEl = document.getElementById('doc-viewer-meta');
+      const container = document.getElementById('doc-viewer-preview-container');
+
+      titleEl.textContent = `${docType} - ${vehNumber}`;
+      subEl.textContent = docObj?.fileName ? `File: ${docObj.fileName}` : 'Verified Soft Copy Document';
+      metaEl.textContent = docObj?.expiry ? `Expiry Date: ${docObj.expiry}` : 'Active Document';
+
+      container.innerHTML = '';
+      if (docObj?.dataUrl) {
+        if (docObj.dataUrl.startsWith('data:image') || docObj.dataUrl.startsWith('data:image/svg')) {
+          const img = document.createElement('img');
+          img.src = docObj.dataUrl;
+          img.className = 'max-w-full max-h-[55vh] object-contain rounded-lg shadow-md border border-slate-300 dark:border-slate-700';
+          img.alt = docType;
+          container.appendChild(img);
+        } else if (docObj.dataUrl.startsWith('data:application/pdf')) {
+          const iframe = document.createElement('iframe');
+          iframe.src = docObj.dataUrl;
+          iframe.className = 'w-full h-[55vh] rounded-lg border border-slate-300 dark:border-slate-700';
+          container.appendChild(iframe);
+        } else {
+          // Fallback image
+          const img = document.createElement('img');
+          img.src = docObj.dataUrl;
+          img.className = 'max-w-full max-h-[55vh] object-contain rounded-lg shadow-md';
+          container.appendChild(img);
+        }
+      } else {
+        container.innerHTML = `<div class="p-8 text-center text-slate-500">
+          <p class="font-bold text-sm">Soft copy document recorded for ${vehNumber}</p>
+          <p class="text-xs text-slate-400 mt-1">${docObj?.fileName || 'Standard certificate on record'}</p>
+        </div>`;
+      }
+
+      syncVanBusDocSections();
+      modal.classList.remove('hidden');
+    }
+
+    function closeDocViewer() {
+      document.getElementById('doc-viewer-modal').classList.add('hidden');
+    }
+
+    // --- NOTIFICATION TOAST HELPER ---
+    function showToast(message, type = 'info') {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      toast.className = `px-4 py-2.5 rounded-xl text-xs font-semibold shadow-lg pointer-events-auto transform transition-all duration-300 translate-y-2 opacity-0 flex items-center space-x-2 ${
+        type === 'success' ? 'bg-emerald-600 text-white' :
+        type === 'error' ? 'bg-rose-600 text-white' :
+        type === 'warning' ? 'bg-amber-600 text-white' : 'bg-slate-800 text-white'
+      }`;
+      toast.innerHTML = `
+        <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="${
+            type === 'success' ? 'M5 13l4 4L19 7' :
+            type === 'error' ? 'M6 18L18 6M6 6l12 12' : 'M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z'
+          }"/>
+        </svg>
+        <span>${message}</span>
+      `;
+      container.appendChild(toast);
+      requestAnimationFrame(() => {
+        toast.classList.remove('translate-y-2', 'opacity-0');
+      });
+      setTimeout(() => {
+        toast.classList.add('opacity-0', 'translate-y-2');
+        setTimeout(() => toast.remove(), 300);
+      }, 3500);
+    }
+
+    // --- THEME MANAGEMENT ---
+    function applyTheme() {
+      const root = document.documentElement;
+      const sunIcon = document.getElementById('theme-sun-icon');
+      const moonIcon = document.getElementById('theme-moon-icon');
+
+      if (state.theme === 'dark') {
+        root.classList.add('dark');
+        sunIcon.classList.remove('hidden');
+        moonIcon.classList.add('hidden');
+      } else {
+        root.classList.remove('dark');
+        sunIcon.classList.add('hidden');
+        moonIcon.classList.remove('hidden');
+      }
+      saveState();
+      updateChartsTheme();
+    }
+
+    // --- LANGUAGE & LOCALIZATION ---
+    function applyLanguage() {
+      const t = i18nData[state.lang];
+      document.querySelectorAll('[data-i18n]').forEach(el => {
+        const key = el.getAttribute('data-i18n');
+        if (t[key]) {
+          el.textContent = t[key];
+        }
+      });
+
+      const langBtnText = document.getElementById('current-lang-text');
+      if (state.lang === 'en') {
+        langBtnText.textContent = "தமிழ் (TA)";
+      } else {
+        langBtnText.textContent = "English (EN)";
+      }
+
+      updateAdminStatusUI();
+      populateVehicleSelects();
+      renderAllViews();
+    }
+
+    // --- ADMIN LOGIN & WHATSAPP LOGIC ---
+    function updateAdminStatusUI() {
+      const navLabel = document.getElementById('nav-admin-label');
+      const loginView = document.getElementById('admin-login-view');
+      const settingsView = document.getElementById('admin-settings-view');
+
+      if (state.admin.isLoggedIn) {
+        navLabel.textContent = `👤 ${state.admin.name || 'Admin'}`;
+        loginView.classList.add('hidden');
+        settingsView.classList.remove('hidden');
+        document.getElementById('admin-name-setting').value = state.admin.name || 'Admin Manager';
+        document.getElementById('admin-whatsapp-setting').value = state.admin.whatsApp || '';
+        document.getElementById('admin-logged-in-label').textContent = `${state.admin.name || 'Admin'} (WhatsApp: ${state.admin.whatsApp || 'Not set'})`;
+      } else {
+        navLabel.textContent = state.lang === 'ta' ? 'நிர்வாகி உள்நுழைவு' : 'Admin Login';
+        loginView.classList.remove('hidden');
+        settingsView.classList.add('hidden');
+      }
+    }
+
+    function openAdminModal() {
+      updateAdminStatusUI();
+      document.getElementById('admin-modal').classList.remove('hidden');
+    }
+
+    function closeAdminModal() {
+      document.getElementById('admin-modal').classList.add('hidden');
+    }
+
+    // Format & Send WhatsApp Report
+    function dispatchWhatsAppReport() {
+      const targetNumber = (state.admin.whatsApp || '').replace(/[^0-9]/g, '');
+      if (!targetNumber || targetNumber.length < 10) {
+        showToast(state.lang === 'ta' ? 'தயவுசெய்து நிர்வாகி வாட்ஸ்அப் எண்ணை அமைக்கவும்' : 'Please configure a valid 10-digit WhatsApp number in Admin Settings', 'warning');
+        openAdminModal();
+        return;
+      }
+
+      // Ensure proper country code (default to 91 for India if 10 digits provided)
+      const fullPhone = targetNumber.length === 10 ? '91' + targetNumber : targetNumber;
+
+      const totalRev = state.transactions.reduce((s, t) => s + (Number(t.revenue) || 0), 0);
+      const totalExp = state.transactions.reduce((s, t) => s + (Number(t.totalExpense) || 0), 0);
+      const netProfit = totalRev - totalExp;
+      const marginPct = totalRev > 0 ? ((netProfit / totalRev) * 100).toFixed(1) : '0';
+
+      let fuel = 0, bata = 0, toll = 0, repair = 0;
+      state.transactions.forEach(t => {
+        fuel += Number(t.expenses?.fuel) || 0;
+        bata += Number(t.expenses?.bata) || 0;
+        toll += Number(t.expenses?.toll) || 0;
+        repair += Number(t.expenses?.repair) || 0;
+      });
+
+      let expiredDocs = 0, soonDocs = 0;
+      state.vehicles.forEach(v => {
+        const sum = getVehicleDocSummary(v);
+        sum.docs.forEach(d => {
+          if (d.status === 'EXPIRED') expiredDocs++;
+          else if (d.status === 'SOON') soonDocs++;
+        });
+      });
+
+      const todayStr = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+
+      const messageText = `*🚜 MAHARAJOTHI LEDGER - DAILY FLEET & P&L REPORT*
+----------------------------------------
+📅 *Date:* ${todayStr}
+👤 *Admin:* ${state.admin.name || 'Manager'}
+🚛 *Fleet Active:* ${state.vehicles.length} Vehicles (Tractor, JCB, Car, Van, Bus)
+🔢 *Total Trips Logged:* ${state.transactions.length}
+
+*💰 FINANCIAL SUMMARY:*
+• *Gross Revenue:* ₹${totalRev.toLocaleString('en-IN')}
+• *Total Expenses:* ₹${totalExp.toLocaleString('en-IN')}
+• *Net P&L:* ${netProfit >= 0 ? '🟢 Profit' : '🔴 Loss'} ₹${netProfit.toLocaleString('en-IN')}
+• *Profit Margin:* ${marginPct}%
+
+*⛽ TOP OPERATIONAL EXPENSES:*
+• Diesel/Fuel: ₹${fuel.toLocaleString('en-IN')}
+• Operator/Driver Wages: ₹${bata.toLocaleString('en-IN')}
+• Highway Tolls: ₹${toll.toLocaleString('en-IN')}
+• Repairs & Service: ₹${repair.toLocaleString('en-IN')}
+
+*📄 DOCUMENT COMPLIANCE STATUS:*
+• 🔴 Expired Soft Copies: ${expiredDocs}
+• 🟡 Expiring Within 30 Days: ${soonDocs}
+• 🟢 All other documents verified.
+
+_Generated securely by Maharajothi Ledger System._`;
+
+      const encodedMsg = encodeURIComponent(messageText);
+      const whatsappUrl = `https://wa.me/${fullPhone}?text=${encodedMsg}`;
+
+      window.open(whatsappUrl, '_blank');
+      showToast(state.lang === 'ta' ? 'வாட்ஸ்அப் அறிக்கை தயாராகி திறக்கப்பட்டது!' : 'WhatsApp report prepared and opened!', 'success');
+    }
+
+    // --- DOCUMENT COMPLIANCE HELPERS ---
+    function checkDocStatus(expiryDateStr) {
+      if (!expiryDateStr) return { status: 'MISSING', days: 0, text: 'No Date', badgeClass: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300' };
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const exp = new Date(expiryDateStr);
+      exp.setHours(0, 0, 0, 0);
+
+      const diffTime = exp.getTime() - today.getTime();
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+      if (diffDays < 0) {
+        return {
+          status: 'EXPIRED',
+          days: diffDays,
+          text: state.lang === 'ta' ? `காலாவதியானது (${Math.abs(diffDays)} நாட்)` : `Expired (${Math.abs(diffDays)}d ago)`,
+          badgeClass: 'bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-300 dark:border-rose-800'
+        };
+      } else if (diffDays <= 30) {
+        return {
+          status: 'SOON',
+          days: diffDays,
+          text: state.lang === 'ta' ? `முடிவடைகிறது (${diffDays} நாட்)` : `Expiring (${diffDays}d left)`,
+          badgeClass: 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300 dark:border-amber-800'
+        };
+      } else {
+        return {
+          status: 'VALID',
+          days: diffDays,
+          text: state.lang === 'ta' ? `செல்லுபடியாகும்` : `Valid`,
+          badgeClass: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800'
+        };
+      }
+    }
+
+    function getVehicleDocSummary(veh) {
+      const isVanOrBus = (veh.type === 'Van' || veh.type === 'Bus');
+      const docs = [
+        { name: 'RC / FC', ...checkDocStatus(veh.rc?.expiry) },
+        { name: 'Insurance', ...checkDocStatus(veh.insurance?.expiry) }
+      ];
+      if (isVanOrBus) {
+        docs.push({ name: 'PUCC', ...checkDocStatus(veh.pollution?.expiry) });
+        docs.push({ name: 'Permit', ...checkDocStatus(veh.permit?.expiry) });
+      }
+      const hasExpired = docs.some(d => d.status === 'EXPIRED');
+      const hasSoon = docs.some(d => d.status === 'SOON');
+      return { docs, hasExpired, hasSoon, isVanOrBus };
+    }
+
+    // --- POPULATE VEHICLE SELECT DROPDOWNS ---
+    function populateVehicleSelects() {
+      const dashSelect = document.getElementById('dashboard-vehicle-filter');
+      const formSelect = document.getElementById('form-vehicle');
+
+      const currentDashVal = dashSelect.value;
+      const currentFormVal = formSelect.value;
+
+      dashSelect.innerHTML = `<option value="ALL">${state.lang === 'ta' ? 'அனைத்து வாகனங்கள் (All)' : 'All Vehicles'}</option>`;
+      formSelect.innerHTML = `<option value="">${state.lang === 'ta' ? '-- வாகனத்தைத் தேர்வு செய்க --' : '-- Select Vehicle --'}</option>`;
+
+      state.vehicles.forEach(veh => {
+        const opt1 = document.createElement('option');
+        opt1.value = veh.id;
+        opt1.textContent = `${veh.number} [${veh.type}] (${veh.model || ''})`;
+        dashSelect.appendChild(opt1);
+
+        const opt2 = document.createElement('option');
+        opt2.value = veh.id;
+        opt2.textContent = `${veh.number} [${veh.type}] - ${veh.driver || 'No Driver'}`;
+        formSelect.appendChild(opt2);
+      });
+
+      if (currentDashVal) dashSelect.value = currentDashVal;
+      if (currentFormVal) formSelect.value = currentFormVal;
+    }
+
+    // --- FILTER TRANSACTIONS BASED ON DASHBOARD CONTROLS ---
+    function getFilteredTransactions() {
+      let filtered = [...state.transactions];
+
+      if (state.selectedVehicleFilter !== 'ALL') {
+        filtered = filtered.filter(tx => tx.vehicleId === state.selectedVehicleFilter);
+      }
+
+      if (state.selectedPeriodFilter !== 'ALL') {
+        const now = new Date();
+        now.setHours(0, 0, 0, 0);
+
+        filtered = filtered.filter(tx => {
+          const txDate = new Date(tx.date);
+          txDate.setHours(0, 0, 0, 0);
+
+          if (state.selectedPeriodFilter === 'TODAY') {
+            return txDate.getTime() === now.getTime();
+          } else if (state.selectedPeriodFilter === 'LAST_7') {
+            const diffDays = (now.getTime() - txDate.getTime()) / (1000 * 60 * 60 * 24);
+            return diffDays >= 0 && diffDays <= 7;
+          } else if (state.selectedPeriodFilter === 'THIS_MONTH') {
+            return txDate.getFullYear() === now.getFullYear() && txDate.getMonth() === now.getMonth();
+          }
+          return true;
+        });
+      }
+
+      filtered.sort((a, b) => new Date(b.date) - new Date(a.date));
+      return filtered;
+    }
+
+    // --- CHART INSTANCES & DRAWING ---
+    let trendChartInstance = null;
+    let expenseCategoryChartInstance = null;
+    let vehicleProfitChartInstance = null;
+
+    function getChartThemeColors() {
+      const isDark = state.theme === 'dark';
+      return {
+        textColor: isDark ? '#94a3b8' : '#64748b',
+        gridColor: isDark ? 'rgba(51, 65, 85, 0.4)' : 'rgba(226, 232, 240, 0.8)',
+        tooltipBg: isDark ? '#0f172a' : '#ffffff',
+        tooltipText: isDark ? '#f8fafc' : '#0f172a',
+        tooltipBorder: isDark ? '#334155' : '#e2e8f0'
+      };
+    }
+
+    function updateChartsTheme() {
+      if (trendChartInstance || expenseCategoryChartInstance || vehicleProfitChartInstance) {
+        renderCharts();
+      }
+    }
+
+    function renderCharts() {
+      const colors = getChartThemeColors();
+      const filteredTx = getFilteredTransactions();
+
+      // 1. Prepare Trend Data
+      const sortedByDate = [...filteredTx].sort((a, b) => new Date(a.date) - new Date(b.date));
+      const dateMap = {};
+      sortedByDate.forEach(tx => {
+        if (!dateMap[tx.date]) {
+          dateMap[tx.date] = { revenue: 0, expense: 0, profit: 0 };
+        }
+        dateMap[tx.date].revenue += Number(tx.revenue) || 0;
+        dateMap[tx.date].expense += Number(tx.totalExpense) || 0;
+        dateMap[tx.date].profit += Number(tx.netProfit) || 0;
+      });
+
+      const trendLabels = Object.keys(dateMap);
+      const revData = trendLabels.map(d => dateMap[d].revenue);
+      const expData = trendLabels.map(d => dateMap[d].expense);
+      const profitData = trendLabels.map(d => dateMap[d].profit);
+
+      const trendCanvas = document.getElementById('trendChart');
+      if (trendCanvas) {
+        if (trendChartInstance) trendChartInstance.destroy();
+
+        trendChartInstance = new Chart(trendCanvas, {
+          type: 'bar',
+          data: {
+            labels: trendLabels.length ? trendLabels : [state.lang === 'ta' ? 'பதிவில்லை' : 'No Data'],
+            datasets: [
+              {
+                label: state.lang === 'ta' ? 'வருமானம் (Revenue)' : 'Revenue (₹)',
+                data: revData.length ? revData : [0],
+                backgroundColor: 'rgba(16, 185, 129, 0.8)',
+                borderRadius: 4,
+                order: 2
+              },
+              {
+                label: state.lang === 'ta' ? 'செலவுகள் (Expense)' : 'Expenses (₹)',
+                data: expData.length ? expData : [0],
+                backgroundColor: 'rgba(244, 63, 94, 0.8)',
+                borderRadius: 4,
+                order: 2
+              },
+              {
+                type: 'line',
+                label: state.lang === 'ta' ? 'நிகர இலாபம் (Net Profit)' : 'Net Profit (₹)',
+                data: profitData.length ? profitData : [0],
+                borderColor: '#ea580c',
+                backgroundColor: 'rgba(234, 88, 12, 0.1)',
+                borderWidth: 2.5,
+                fill: true,
+                tension: 0.3,
+                order: 1
+              }
+            ]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                backgroundColor: colors.tooltipBg,
+                titleColor: colors.tooltipText,
+                bodyColor: colors.tooltipText,
+                borderColor: colors.tooltipBorder,
+                borderWidth: 1,
+                padding: 10,
+                callbacks: {
+                  label: ctx => `${ctx.dataset.label}: ₹${ctx.parsed.y.toLocaleString('en-IN')}`
+                }
+              }
+            },
+            scales: {
+              x: {
+                grid: { color: colors.gridColor },
+                ticks: { color: colors.textColor, font: { size: 10 } }
+              },
+              y: {
+                grid: { color: colors.gridColor },
+                ticks: {
+                  color: colors.textColor,
+                  font: { size: 10 },
+                  callback: val => '₹' + Number(val).toLocaleString('en-IN')
+                }
+              }
+            }
+          }
+        });
+      }
+
+      // 2. Prepare Expense Category Breakdown
+      let fuelTotal = 0, bataTotal = 0, tollTotal = 0, repairTotal = 0, policeTotal = 0, miscTotal = 0;
+      filteredTx.forEach(tx => {
+        fuelTotal += Number(tx.expenses?.fuel) || 0;
+        bataTotal += Number(tx.expenses?.bata) || 0;
+        tollTotal += Number(tx.expenses?.toll) || 0;
+        repairTotal += Number(tx.expenses?.repair) || 0;
+        policeTotal += Number(tx.expenses?.police) || 0;
+        miscTotal += Number(tx.expenses?.misc) || 0;
+      });
+
+      const catLabels = state.lang === 'ta' 
+        ? ['டீசல்/பெட்ரோல்', 'ஓட்டுநர்/ஆபரேட்டர் படி', 'டோல் கேட்', 'பழுது/சர்வீஸ்', 'காவல்துறை', 'இதர செலவு']
+        : ['Fuel', 'Driver/Operator Bata', 'Toll Gate', 'Repairs & Maintenance', 'Police / Challan', 'Misc'];
+
+      const catValues = [fuelTotal, bataTotal, tollTotal, repairTotal, policeTotal, miscTotal];
+      const hasExpenseData = catValues.some(v => v > 0);
+
+      const expCanvas = document.getElementById('expenseCategoryChart');
+      if (expCanvas) {
+        if (expenseCategoryChartInstance) expenseCategoryChartInstance.destroy();
+
+        expenseCategoryChartInstance = new Chart(expCanvas, {
+          type: 'doughnut',
+          data: {
+            labels: catLabels,
+            datasets: [{
+              data: hasExpenseData ? catValues : [1],
+              backgroundColor: hasExpenseData ? [
+                '#ea580c', // orange
+                '#10b981', // emerald
+                '#f59e0b', // amber
+                '#ef4444', // red
+                '#8b5cf6', // purple
+                '#64748b'  // slate
+              ] : ['#334155'],
+              borderWidth: 2,
+              borderColor: state.theme === 'dark' ? '#0f172a' : '#ffffff'
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: {
+                position: 'bottom',
+                labels: {
+                  color: colors.textColor,
+                  font: { size: 10 },
+                  boxWidth: 10,
+                  padding: 8
+                }
+              },
+              tooltip: {
+                backgroundColor: colors.tooltipBg,
+                titleColor: colors.tooltipText,
+                bodyColor: colors.tooltipText,
+                borderColor: colors.tooltipBorder,
+                borderWidth: 1,
+                callbacks: {
+                  label: ctx => {
+                    if (!hasExpenseData) return 'No expenses recorded';
+                    const val = ctx.parsed;
+                    const total = catValues.reduce((a, b) => a + b, 0);
+                    const pct = total > 0 ? ((val / total) * 100).toFixed(1) : 0;
+                    return ` ${ctx.label}: ₹${val.toLocaleString('en-IN')} (${pct}%)`;
+                  }
+                }
+              }
+            },
+            cutout: '65%'
+          }
+        });
+      }
+
+      // 3. Prepare Vehicle-wise Profit Comparison
+      const vehProfitMap = {};
+      state.vehicles.forEach(v => {
+        vehProfitMap[v.id] = { label: `${v.number} (${v.type})`, profit: 0, revenue: 0, expense: 0 };
+      });
+      state.transactions.forEach(tx => {
+        if (vehProfitMap[tx.vehicleId]) {
+          vehProfitMap[tx.vehicleId].profit += Number(tx.netProfit) || 0;
+          vehProfitMap[tx.vehicleId].revenue += Number(tx.revenue) || 0;
+          vehProfitMap[tx.vehicleId].expense += Number(tx.totalExpense) || 0;
+        }
+      });
+
+      const vehLabels = Object.values(vehProfitMap).map(v => v.label);
+      const vehProfits = Object.values(vehProfitMap).map(v => v.profit);
+
+      const vehCanvas = document.getElementById('vehicleProfitChart');
+      if (vehCanvas) {
+        if (vehicleProfitChartInstance) vehicleProfitChartInstance.destroy();
+
+        vehicleProfitChartInstance = new Chart(vehCanvas, {
+          type: 'bar',
+          data: {
+            labels: vehLabels.length ? vehLabels : [state.lang === 'ta' ? 'வாகனங்கள் இல்லை' : 'No Vehicles'],
+            datasets: [{
+              label: state.lang === 'ta' ? 'நிகர இலாபம் / நட்டம் (₹)' : 'Net Profit / Loss (₹)',
+              data: vehProfits.length ? vehProfits : [0],
+              backgroundColor: vehProfits.map(p => p >= 0 ? 'rgba(16, 185, 129, 0.85)' : 'rgba(239, 68, 68, 0.85)'),
+              borderRadius: 6
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            indexAxis: 'y',
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                backgroundColor: colors.tooltipBg,
+                titleColor: colors.tooltipText,
+                bodyColor: colors.tooltipText,
+                borderColor: colors.tooltipBorder,
+                borderWidth: 1,
+                callbacks: {
+                  label: ctx => `Net P&L: ₹${ctx.parsed.x.toLocaleString('en-IN')}`
+                }
+              }
+            },
+            scales: {
+              x: {
+                grid: { color: colors.gridColor },
+                ticks: {
+                  color: colors.textColor,
+                  font: { size: 10 },
+                  callback: val => '₹' + Number(val).toLocaleString('en-IN')
+                }
+              },
+              y: {
+                grid: { color: colors.gridColor },
+                ticks: { color: colors.textColor, font: { size: 10, weight: 600 } }
+              }
+            }
+          }
+        });
+      }
+    }
+
+    // --- RENDER DASHBOARD KPI METRICS & ALERTS ---
+    function renderDashboardKPIs() {
+      const filteredTx = getFilteredTransactions();
+      const totalRev = filteredTx.reduce((sum, tx) => sum + (Number(tx.revenue) || 0), 0);
+      const totalExp = filteredTx.reduce((sum, tx) => sum + (Number(tx.totalExpense) || 0), 0);
+      const netProfit = totalRev - totalExp;
+      const marginPct = totalRev > 0 ? ((netProfit / totalRev) * 100).toFixed(1) : '0';
+
+      document.getElementById('kpi-total-revenue').textContent = '₹' + totalRev.toLocaleString('en-IN');
+      document.getElementById('kpi-total-expense').textContent = '₹' + totalExp.toLocaleString('en-IN');
+      
+      const netEl = document.getElementById('kpi-net-profit');
+      const badgeEl = document.getElementById('kpi-profit-badge');
+      const iconContainer = document.getElementById('kpi-profit-icon-container');
+
+      netEl.textContent = (netProfit >= 0 ? '₹' : '-₹') + Math.abs(netProfit).toLocaleString('en-IN');
+      badgeEl.textContent = `${marginPct}%`;
+
+      if (netProfit >= 0) {
+        netEl.className = 'text-2xl font-bold text-emerald-600 dark:text-emerald-400';
+        badgeEl.className = 'px-2 py-0.5 text-xs font-bold rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300';
+        iconContainer.className = 'p-2 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400';
+      } else {
+        netEl.className = 'text-2xl font-bold text-rose-600 dark:text-rose-400';
+        badgeEl.className = 'px-2 py-0.5 text-xs font-bold rounded-full bg-rose-100 text-rose-700 dark:bg-rose-950/50 dark:text-rose-300';
+        iconContainer.className = 'p-2 rounded-lg bg-rose-50 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400';
+      }
+
+      document.getElementById('kpi-fleet-count').textContent = `${state.vehicles.length} ${state.lang === 'ta' ? 'வாகனங்கள்' : 'Vehicles'}`;
+
+      let totalExpired = 0;
+      let totalSoon = 0;
+      state.vehicles.forEach(v => {
+        const sum = getVehicleDocSummary(v);
+        sum.docs.forEach(d => {
+          if (d.status === 'EXPIRED') totalExpired++;
+          else if (d.status === 'SOON') totalSoon++;
+        });
+      });
+
+      const docStatusText = document.getElementById('kpi-doc-status-text');
+      const alertBanner = document.getElementById('doc-expiry-alert-banner');
+      const alertMsg = document.getElementById('doc-expiry-alert-msg');
+
+      if (totalExpired > 0 || totalSoon > 0) {
+        alertBanner.classList.remove('hidden');
+        if (state.lang === 'ta') {
+          alertMsg.textContent = `${totalExpired} சான்றிதழ் நகல்கள் காலாவதியானது, ${totalSoon} விரைவில் முடிவடைகின்றன. உடனே புதுப்பிக்கவும்!`;
+          docStatusText.textContent = `எச்சரிக்கை: ${totalExpired} காலாவதியானது, ${totalSoon} விரைவில்`;
+        } else {
+          alertMsg.textContent = `${totalExpired} expired soft copies, ${totalSoon} expiring within 30 days. Action required!`;
+          docStatusText.textContent = `Alert: ${totalExpired} expired, ${totalSoon} soon`;
+        }
+        docStatusText.className = 'mt-1 text-xs text-rose-600 dark:text-rose-400 font-semibold';
+      } else {
+        alertBanner.classList.add('hidden');
+        docStatusText.textContent = state.lang === 'ta' ? 'அனைத்து சான்றிதழ் நகல்களும் சரியானவை ✓' : 'All soft copy documents valid ✓';
+        docStatusText.className = 'mt-1 text-xs text-emerald-600 dark:text-emerald-400 font-medium';
+      }
+    }
+
+    // --- RENDER TRANSACTIONS TABLE ---
+    function renderTransactionsTable() {
+      const tbody = document.getElementById('transactions-table-body');
+      const noMsg = document.getElementById('no-trans-msg');
+      const searchQuery = (document.getElementById('transaction-search').value || '').toLowerCase().trim();
+
+      let list = [...state.transactions].sort((a, b) => new Date(b.date) - new Date(a.date));
+
+      if (searchQuery) {
+        list = list.filter(tx => 
+          tx.vehicleNumber.toLowerCase().includes(searchQuery) ||
+          (tx.route && tx.route.toLowerCase().includes(searchQuery)) ||
+          tx.date.includes(searchQuery)
+        );
+      }
+
+      if (list.length === 0) {
+        tbody.innerHTML = '';
+        noMsg.classList.remove('hidden');
+        return;
+      }
+
+      noMsg.classList.add('hidden');
+      tbody.innerHTML = list.map(tx => {
+        const isProfit = tx.netProfit >= 0;
+        const profitMargin = tx.revenue > 0 ? ((tx.netProfit / tx.revenue) * 100).toFixed(0) : 0;
+        return `
+          <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition">
+            <td class="py-3 px-4 font-medium text-slate-800 dark:text-slate-200 whitespace-nowrap">${tx.date}</td>
+            <td class="py-3 px-4 whitespace-nowrap">
+              <span class="font-bold text-slate-900 dark:text-white">${tx.vehicleNumber}</span>
+            </td>
+            <td class="py-3 px-4 text-slate-600 dark:text-slate-300">
+              <div>${tx.route || (state.lang === 'ta' ? 'பொதுப் பயணம்' : 'Standard Trip')}</div>
+              <div class="text-[10px] text-slate-400 mt-0.5">Fuel: ₹${(tx.expenses?.fuel||0).toLocaleString()} • Bata: ₹${(tx.expenses?.bata||0).toLocaleString()} • Toll: ₹${(tx.expenses?.toll||0).toLocaleString()}</div>
+            </td>
+            <td class="py-3 px-4 text-right font-bold text-slate-900 dark:text-white whitespace-nowrap">₹${Number(tx.revenue).toLocaleString('en-IN')}</td>
+            <td class="py-3 px-4 text-right font-medium text-rose-600 dark:text-rose-400 whitespace-nowrap">₹${Number(tx.totalExpense).toLocaleString('en-IN')}</td>
+            <td class="py-3 px-4 text-right font-bold whitespace-nowrap ${isProfit ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}">
+              ${isProfit ? '+' : ''}₹${Number(tx.netProfit).toLocaleString('en-IN')}
+            </td>
+            <td class="py-3 px-4 text-center whitespace-nowrap">
+              <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                isProfit ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300' : 'bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300'
+              }">
+                ${isProfit ? (state.lang === 'ta' ? 'இலாபம்' : 'Profit') : (state.lang === 'ta' ? 'நட்டம்' : 'Loss')} (${profitMargin}%)
+              </span>
+            </td>
+            <td class="py-3 px-4 text-center whitespace-nowrap space-x-1">
+              <button class="edit-tx-btn p-1 text-slate-400 hover:text-orange-600 dark:hover:text-orange-400 transition" data-id="${tx.id}" title="Edit">
+                <svg class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+              </button>
+              <button class="delete-tx-btn p-1 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 transition" data-id="${tx.id}" title="Delete">
+                <svg class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+
+      document.querySelectorAll('.edit-tx-btn').forEach(b => {
+        b.addEventListener('click', e => editTransaction(e.currentTarget.getAttribute('data-id')));
+      });
+      document.querySelectorAll('.delete-tx-btn').forEach(b => {
+        b.addEventListener('click', e => deleteTransaction(e.currentTarget.getAttribute('data-id')));
+      });
+    }
+
+    // --- RENDER VEHICLES CARDS WITH SOFT COPY PREVIEW BUTTONS ---
+    function renderVehiclesGrid() {
+      const grid = document.getElementById('vehicles-card-grid');
+      const noMsg = document.getElementById('no-vehicles-msg');
+
+      if (state.vehicles.length === 0) {
+        grid.innerHTML = '';
+        noMsg.classList.remove('hidden');
+        return;
+      }
+
+      noMsg.classList.add('hidden');
+      grid.innerHTML = state.vehicles.map(veh => {
+        const rcStatus = checkDocStatus(veh.rc?.expiry);
+        const insStatus = checkDocStatus(veh.insurance?.expiry);
+        const puccStatus = checkDocStatus(veh.pollution?.expiry);
+        const permitStatus = checkDocStatus(veh.permit?.expiry);
+
+        const trips = state.transactions.filter(t => t.vehicleId === veh.id);
+        const totalRev = trips.reduce((s, t) => s + (Number(t.revenue) || 0), 0);
+        const totalExp = trips.reduce((s, t) => s + (Number(t.totalExpense) || 0), 0);
+        const netProfit = totalRev - totalExp;
+
+        return `
+          <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden flex flex-col justify-between hover:border-orange-500/50 transition">
+            <div class="p-5 space-y-4">
+              <!-- Card Header -->
+              <div class="flex items-start justify-between">
+                <div>
+                  <span class="inline-block px-2.5 py-0.5 rounded text-[10px] font-extrabold uppercase tracking-wider bg-orange-100 text-orange-700 dark:bg-orange-950/60 dark:text-orange-300">
+                    ${veh.type}
+                  </span>
+                  <h3 class="text-base font-extrabold text-slate-900 dark:text-white mt-1">${veh.number}</h3>
+                  <p class="text-xs text-slate-500 dark:text-slate-400">${veh.model || 'Heavy/Commercial Machine'}</p>
+                </div>
+                <div class="text-right">
+                  <span class="text-[10px] text-slate-400 block">${state.lang === 'ta' ? 'ஓட்டுநர் / ஆபரேட்டர்' : 'Driver / Operator'}</span>
+                  <span class="text-xs font-semibold text-slate-700 dark:text-slate-300">${veh.driver || 'Not Assigned'}</span>
+                </div>
+              </div>
+
+              <!-- P&L Quick Snapshot for this Vehicle -->
+              <div class="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 grid grid-cols-3 text-center text-xs">
+                <div>
+                  <span class="text-[10px] text-slate-400 block">${state.lang === 'ta' ? 'வேலைகள்' : 'Trips/Work'}</span>
+                  <span class="font-bold text-slate-800 dark:text-slate-200">${trips.length}</span>
+                </div>
+                <div>
+                  <span class="text-[10px] text-slate-400 block">${state.lang === 'ta' ? 'வருமானம்' : 'Revenue'}</span>
+                  <span class="font-bold text-slate-800 dark:text-slate-200">₹${totalRev.toLocaleString('en-IN')}</span>
+                </div>
+                <div>
+                  <span class="text-[10px] text-slate-400 block">${state.lang === 'ta' ? 'இலாபம்' : 'Profit'}</span>
+                  <span class="font-bold ${netProfit >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}">
+                    ₹${netProfit.toLocaleString('en-IN')}
+                  </span>
+                </div>
+              </div>
+
+              <!-- Soft Copy Documents List -->
+              <div class="space-y-2 pt-1">
+                <div class="flex items-center justify-between">
+                  <h4 class="text-[11px] font-bold uppercase tracking-wider text-slate-400">${state.lang === 'ta' ? 'சான்றிதழ் நகல்கள் (Soft Copy)' : 'Soft Copy Documents'}</h4>
+                  <span class="text-[10px] text-orange-600 dark:text-orange-400 font-semibold">Click to View</span>
+                </div>
+
+                <!-- 1. RC Book Soft Copy -->
+                <div class="flex items-center justify-between text-xs p-2 rounded-lg bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800">
+                  <div class="flex items-center space-x-2">
+                    <button class="view-doc-btn flex items-center space-x-1.5 text-blue-600 dark:text-blue-400 hover:underline font-semibold" data-veh="${veh.number}" data-type="RC Book / Fitness" data-doc='${JSON.stringify(veh.rc || {})}'>
+                      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                      <span>RC Soft Copy</span>
+                    </button>
+                    <span class="text-[10px] text-slate-400">(${veh.rc?.expiry || 'N/A'})</span>
+                  </div>
+                  <span class="px-2 py-0.5 rounded text-[10px] font-bold ${rcStatus.badgeClass}">${rcStatus.text}</span>
+                </div>
+
+                <!-- 2. Insurance Soft Copy -->
+                <div class="flex items-center justify-between text-xs p-2 rounded-lg bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800">
+                  <div class="flex items-center space-x-2">
+                    <button class="view-doc-btn flex items-center space-x-1.5 text-blue-600 dark:text-blue-400 hover:underline font-semibold" data-veh="${veh.number}" data-type="Insurance Policy" data-doc='${JSON.stringify(veh.insurance || {})}'>
+                      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                      <span>${state.lang === 'ta' ? 'இன்சூரன்ஸ் நகல்' : 'Insurance Soft Copy'}</span>
+                    </button>
+                    <span class="text-[10px] text-slate-400">(${veh.insurance?.expiry || 'N/A'})</span>
+                  </div>
+                  <span class="px-2 py-0.5 rounded text-[10px] font-bold ${insStatus.badgeClass}">${insStatus.text}</span>
+                </div>
+
+                <!-- 3. PUCC Soft Copy (Only for Van & Bus) -->
+                ${(veh.type === 'Van' || veh.type === 'Bus') ? `
+                <div class="flex items-center justify-between text-xs p-2 rounded-lg bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800">
+                  <div class="flex items-center space-x-2">
+                    <button class="view-doc-btn flex items-center space-x-1.5 text-blue-600 dark:text-blue-400 hover:underline font-semibold" data-veh="${veh.number}" data-type="Pollution Certificate" data-doc='${JSON.stringify(veh.pollution || {})}'>
+                      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                      <span>PUCC (${state.lang === 'ta' ? 'புகை நகல்' : 'Pollution'})</span>
+                    </button>
+                    <span class="text-[10px] text-slate-400">(${veh.pollution?.expiry || 'N/A'})</span>
+                  </div>
+                  <span class="px-2 py-0.5 rounded text-[10px] font-bold ${puccStatus.badgeClass}">${puccStatus.text}</span>
+                </div>
+                ` : `
+                <div class="flex items-center justify-between text-xs p-2 rounded-lg bg-slate-50/50 dark:bg-slate-800/20 border border-dashed border-slate-200 dark:border-slate-800 text-slate-400">
+                  <div class="flex items-center space-x-1.5 text-[11px]">
+                    <span class="font-medium">${state.lang === 'ta' ? 'புகை (PUCC):' : 'PUCC:'}</span>
+                    <span class="text-slate-400">${state.lang === 'ta' ? 'வேன் & பஸ்ஸுக்கு மட்டுமே பொருந்தும் (N/A)' : 'Only for Van & Bus (N/A)'}</span>
+                  </div>
+                  <span class="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400">Exempt</span>
+                </div>
+                ` }
+
+                <!-- 4. Permit Soft Copy (Only for Van & Bus) -->
+                ${(veh.type === 'Van' || veh.type === 'Bus') ? `
+                <div class="flex items-center justify-between text-xs p-2 rounded-lg bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800">
+                  <div class="flex items-center space-x-2">
+                    <button class="view-doc-btn flex items-center space-x-1.5 text-blue-600 dark:text-blue-400 hover:underline font-semibold" data-veh="${veh.number}" data-type="Vehicle Permit" data-doc='${JSON.stringify(veh.permit || {})}'>
+                      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                      <span>${state.lang === 'ta' ? 'பெர்மிட் நகல்' : 'Permit Soft Copy'}</span>
+                    </button>
+                    <span class="text-[10px] text-slate-400">(${veh.permit?.expiry || 'N/A'})</span>
+                  </div>
+                  <span class="px-2 py-0.5 rounded text-[10px] font-bold ${permitStatus.badgeClass}">${permitStatus.text}</span>
+                </div>
+                ` : `
+                <div class="flex items-center justify-between text-xs p-2 rounded-lg bg-slate-50/50 dark:bg-slate-800/20 border border-dashed border-slate-200 dark:border-slate-800 text-slate-400">
+                  <div class="flex items-center space-x-1.5 text-[11px]">
+                    <span class="font-medium">${state.lang === 'ta' ? 'பெர்மிட் (Permit):' : 'Permit:'}</span>
+                    <span class="text-slate-400">${state.lang === 'ta' ? 'வேன் & பஸ்ஸுக்கு மட்டுமே பொருந்தும் (N/A)' : 'Only for Van & Bus (N/A)'}</span>
+                  </div>
+                  <span class="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400">Exempt</span>
+                </div>
+                `}
+              </div>
+            </div>
+
+            <!-- Card Action Footer -->
+            <div class="p-3 bg-slate-50 dark:bg-slate-800/60 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end space-x-2">
+              <button class="edit-veh-btn px-3 py-1.5 text-xs font-semibold rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition" data-id="${veh.id}">
+                ${state.lang === 'ta' ? 'ஆவணங்கள் திருத்து' : 'Edit Docs'}
+              </button>
+              <button class="delete-veh-btn px-3 py-1.5 text-xs font-semibold rounded-lg text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition" data-id="${veh.id}">
+                ${state.lang === 'ta' ? 'நீக்கு' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      document.querySelectorAll('.view-doc-btn').forEach(b => {
+        b.addEventListener('click', e => {
+          const veh = e.currentTarget.getAttribute('data-veh');
+          const type = e.currentTarget.getAttribute('data-type');
+          const doc = JSON.parse(e.currentTarget.getAttribute('data-doc'));
+          openDocViewer(type, veh, doc);
+        });
+      });
+
+      document.querySelectorAll('.edit-veh-btn').forEach(b => {
+        b.addEventListener('click', e => editVehicle(e.currentTarget.getAttribute('data-id')));
+      });
+      document.querySelectorAll('.delete-veh-btn').forEach(b => {
+        b.addEventListener('click', e => deleteVehicle(e.currentTarget.getAttribute('data-id')));
+      });
+    }
+
+    // --- RENDER FORMAL DATA ANALYST REPORT VIEW ---
+    function renderAnalystReport() {
+      const now = new Date();
+      document.getElementById('report-timestamp').textContent = now.toLocaleDateString('en-IN', {
+        weekday: 'short', year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+      });
+
+      const totalRev = state.transactions.reduce((s, t) => s + (Number(t.revenue) || 0), 0);
+      const totalExp = state.transactions.reduce((s, t) => s + (Number(t.totalExpense) || 0), 0);
+      const netProfit = totalRev - totalExp;
+      const marginPct = totalRev > 0 ? ((netProfit / totalRev) * 100).toFixed(1) : '0';
+
+      document.getElementById('rep-rev').textContent = '₹' + totalRev.toLocaleString('en-IN');
+      document.getElementById('rep-exp').textContent = '₹' + totalExp.toLocaleString('en-IN');
+      document.getElementById('rep-net').textContent = (netProfit >= 0 ? '₹' : '-₹') + Math.abs(netProfit).toLocaleString('en-IN');
+      document.getElementById('rep-margin').textContent = `${marginPct}%`;
+
+      const badge = document.getElementById('report-overall-rating-badge');
+      if (Number(marginPct) >= 20) {
+        badge.className = 'inline-block px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300';
+        badge.textContent = state.lang === 'ta' ? 'உயர் இலாபகரமானது (HEALTHY ROI)' : 'HIGHLY PROFITABLE (HEALTHY ROI)';
+      } else if (Number(marginPct) > 0) {
+        badge.className = 'inline-block px-3 py-1 rounded-full text-xs font-bold bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-300';
+        badge.textContent = state.lang === 'ta' ? 'மிதமான இலாபம் (STABLE)' : 'STABLE MARGIN (OPERATIONAL)';
+      } else {
+        badge.className = 'inline-block px-3 py-1 rounded-full text-xs font-bold bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300';
+        badge.textContent = state.lang === 'ta' ? 'நட்டம் எச்சரிக்கை (DEFICIT)' : 'DEFICIT ALERT (LOSS RUNNING)';
+      }
+
+      const summaryEl = document.getElementById('report-summary-text');
+      if (state.lang === 'ta') {
+        summaryEl.textContent = `மகாராஜோதி லெட்ஜர் கணக்குப்படி, ${state.vehicles.length} வாகனங்களில் (டிராக்டர், ஜேசிபி, கார், வேன், பேருந்து) ${state.transactions.length} வேலைகள் பதிவாகியுள்ளன. மொத்த வருவாய் ₹${totalRev.toLocaleString('en-IN')}, இயக்க செலவுகள் ₹${totalExp.toLocaleString('en-IN')}. நிகர இலாப வரம்பு ${marginPct}%. சான்றிதழ் நகல்கள் முறைப்படி கண்காணிக்கப்படுகின்றன.`;
+      } else {
+        summaryEl.textContent = `Maharajothi Ledger operational audit across ${state.vehicles.length} commercial and heavy assets (Tractor, JCB, Car, Van, Bus) covering ${state.transactions.length} logged field runs. Generated aggregate revenue of ₹${totalRev.toLocaleString('en-IN')} against total operating expenditure of ₹${totalExp.toLocaleString('en-IN')}, realizing a net profit margin of ${marginPct}%. Soft copy document tracking is active with complete fleet performance analytics.`;
+      }
+
+      const matrixTbody = document.getElementById('report-vehicle-table-body');
+      matrixTbody.innerHTML = state.vehicles.map(veh => {
+        const trips = state.transactions.filter(t => t.vehicleId === veh.id);
+        const vRev = trips.reduce((s, t) => s + (Number(t.revenue) || 0), 0);
+        const vExp = trips.reduce((s, t) => s + (Number(t.totalExpense) || 0), 0);
+        const vProfit = vRev - vExp;
+        const vMargin = vRev > 0 ? ((vProfit / vRev) * 100).toFixed(1) : '0';
+        const docSummary = getVehicleDocSummary(veh);
+        const docBadge = docSummary.hasExpired 
+          ? `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300">Expired</span>`
+          : (docSummary.hasSoon ? `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300">Renew Soon</span>` : `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">Soft Copy OK</span>`);
+
+        return `
+          <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/40">
+            <td class="py-2.5 px-3 font-bold text-slate-900 dark:text-white">${veh.number}</td>
+            <td class="py-2.5 px-3 text-slate-600 dark:text-slate-300">${veh.type} • ${veh.driver || 'N/A'}</td>
+            <td class="py-2.5 px-3 text-center">${trips.length}</td>
+            <td class="py-2.5 px-3 text-right font-medium">₹${vRev.toLocaleString('en-IN')}</td>
+            <td class="py-2.5 px-3 text-right text-rose-600 dark:text-rose-400">₹${vExp.toLocaleString('en-IN')}</td>
+            <td class="py-2.5 px-3 text-right font-bold ${vProfit >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}">₹${vProfit.toLocaleString('en-IN')}</td>
+            <td class="py-2.5 px-3 text-right font-semibold">${vMargin}%</td>
+            <td class="py-2.5 px-3 text-center">${docBadge}</td>
+          </tr>
+        `;
+      }).join('');
+
+      let fuel = 0, bata = 0, toll = 0, repair = 0, police = 0, misc = 0;
+      state.transactions.forEach(t => {
+        fuel += Number(t.expenses?.fuel) || 0;
+        bata += Number(t.expenses?.bata) || 0;
+        toll += Number(t.expenses?.toll) || 0;
+        repair += Number(t.expenses?.repair) || 0;
+        police += Number(t.expenses?.police) || 0;
+        misc += Number(t.expenses?.misc) || 0;
+      });
+
+      const drivers = [
+        { name: state.lang === 'ta' ? 'எரிபொருள் (Diesel/Fuel)' : 'Fuel / Diesel Costs', amount: fuel, color: 'bg-orange-600' },
+        { name: state.lang === 'ta' ? 'ஓட்டுநர்/ஆபரேட்டர் படி' : 'Driver & Operator Wages', amount: bata, color: 'bg-emerald-600' },
+        { name: state.lang === 'ta' ? 'சுங்கக் கட்டணம் (Tolls)' : 'Highway Tolls', amount: toll, color: 'bg-amber-600' },
+        { name: state.lang === 'ta' ? 'பராமரிப்பு (Repairs)' : 'Maintenance & Repairs', amount: repair, color: 'bg-rose-600' },
+        { name: state.lang === 'ta' ? 'காவல்துறை அபராதம் (Challan)' : 'Fines & Challan', amount: police, color: 'bg-purple-600' },
+        { name: state.lang === 'ta' ? 'இதர செலவுகள் (Misc)' : 'Miscellaneous', amount: misc, color: 'bg-slate-600' }
+      ];
+
+      const costContainer = document.getElementById('report-cost-breakdown-container');
+      costContainer.innerHTML = drivers.map(d => {
+        const pct = totalExp > 0 ? ((d.amount / totalExp) * 100).toFixed(1) : 0;
+        return `
+          <div class="p-3 rounded-lg bg-slate-50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-800 space-y-1.5">
+            <div class="flex items-center justify-between text-xs">
+              <span class="font-semibold text-slate-700 dark:text-slate-300">${d.name}</span>
+              <span class="font-bold text-slate-900 dark:text-white">₹${d.amount.toLocaleString('en-IN')} (${pct}%)</span>
+            </div>
+            <div class="w-full h-2 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
+              <div class="h-full ${d.color} rounded-full" style="width: ${pct}%"></div>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      const recList = document.getElementById('report-recommendations-list');
+      const recs = [];
+      if (fuel > totalExp * 0.35) {
+        recs.push(state.lang === 'ta' 
+          ? `• <strong>எரிபொருள் மேலாண்மை:</strong> டிராக்டர் மற்றும் ஜேசிபி வாகனங்களுக்கு டீசல் செலவு அதிகமாகிறது. தேவையின்றி இன்ஜினை ஆன் செய்து வைப்பதை (Idle time) தவிர்க்கவும்.`
+          : `• <strong>Fuel Efficiency Optimization:</strong> Fuel accounts for ${((fuel/totalExp)*100).toFixed(0)}% of total OPEX. Reduce idle machine runtime on Tractors and JCB excavators to save 8-12% in margins.`);
+      }
+      if (repair > totalExp * 0.10) {
+        recs.push(state.lang === 'ta'
+          ? `• <strong>தடுப்பு பராமரிப்பு:</strong> ஹைட்ராலிக் ஆயில் மற்றும் ஃபில்டர் சர்வீஸ் சரியான நேரத்தில் செய்வதன் மூலம் பெரும் பழுது செலவுகளைத் தடுக்கலாம்.`
+          : `• <strong>Scheduled Maintenance Schedule:</strong> Repair incidents represent ${((repair/totalExp)*100).toFixed(0)}% of costs. Transition to preventative servicing for JCB and Bus fleet.`);
+      }
+      
+      let expiredCount = 0;
+      state.vehicles.forEach(v => {
+        if (getVehicleDocSummary(v).hasExpired) expiredCount++;
+      });
+      if (expiredCount > 0) {
+        recs.push(state.lang === 'ta'
+          ? `• <strong>சான்றிதழ் புதுப்பித்தல்:</strong> ${expiredCount} வாகனங்களின் சான்றிதழ் நகல்கள் காலாவதியாகியுள்ளன. வாட்ஸ்அப் எச்சரிக்கையைக் கவனித்து உடனடியாகப் புதுப்பிக்கவும்.`
+          : `• <strong>Document Compliance Action:</strong> ${expiredCount} vehicle soft copies are expired. Update and verify renewed certificates immediately.`);
+      } else {
+        recs.push(state.lang === 'ta'
+          ? `• <strong>ஆவண நிலை சீரானது:</strong> அனைத்து டிராக்டர், ஜேசிபி, கார், வேன், பேருந்து சான்றிதழ் நகல்களும் சரியாக உள்ளன.`
+          : `• <strong>Compliance Standing:</strong> Fleet regulatory compliance is robust with all active vehicles operating within valid certificate horizons.`);
+      }
+
+      recList.innerHTML = recs.map(r => `<div class="p-2.5 rounded-lg bg-orange-50/50 dark:bg-orange-950/20 border border-orange-200/50 dark:border-orange-900/40 text-slate-700 dark:text-slate-300">${r}</div>`).join('');
+    }
+
+    // --- RE-RENDER ALL VIEWS ---
+    function renderAllViews() {
+      renderDashboardKPIs();
+      renderCharts();
+      renderTransactionsTable();
+      renderVehiclesGrid();
+      renderAnalystReport();
+    }
+
+    // --- FILE READER HELPER FOR SOFT COPY UPLOADS ---
+    function handleFileUpload(inputEl, docKey, statusElId) {
+      inputEl.addEventListener('change', e => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const statusEl = document.getElementById(statusElId);
+        statusEl.textContent = `Loading ${file.name}...`;
+
+        const reader = new FileReader();
+        reader.onload = function(evt) {
+          pendingUploads[docKey] = {
+            fileName: file.name,
+            fileType: file.type,
+            dataUrl: evt.target.result
+          };
+          statusEl.textContent = `✓ Uploaded: ${file.name}`;
+          statusEl.className = 'text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold';
+        };
+        reader.onerror = function() {
+          statusEl.textContent = `Failed to read file`;
+          statusEl.className = 'text-[10px] text-rose-600 font-semibold';
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+
+    // --- FORM SUBMISSIONS & LOGIC ---
+    function setupFormListeners() {
+      const revInput = document.getElementById('form-revenue');
+      const expenseInputs = document.querySelectorAll('.calc-expense');
+
+      function calculateLiveMargin() {
+        const rev = Number(revInput.value) || 0;
+        let expTotal = 0;
+        expenseInputs.forEach(i => {
+          expTotal += Number(i.value) || 0;
+        });
+        const net = rev - expTotal;
+        const pct = rev > 0 ? ((net / rev) * 100).toFixed(1) : 0;
+
+        document.getElementById('calc-rev-val').textContent = '₹' + rev.toLocaleString('en-IN');
+        document.getElementById('calc-exp-val').textContent = '₹' + expTotal.toLocaleString('en-IN');
+        
+        const netEl = document.getElementById('calc-net-val');
+        netEl.textContent = `${net >= 0 ? '+' : ''}₹${net.toLocaleString('en-IN')} (${pct}%)`;
+        netEl.className = net >= 0 ? 'font-bold text-emerald-600 dark:text-emerald-400' : 'font-bold text-rose-600 dark:text-rose-400';
+      }
+
+      revInput.addEventListener('input', calculateLiveMargin);
+      expenseInputs.forEach(i => i.addEventListener('input', calculateLiveMargin));
+
+      // Wire file inputs for soft copies
+      handleFileUpload(document.getElementById('veh-rc-file'), 'rc', 'veh-rc-file-status');
+      handleFileUpload(document.getElementById('veh-ins-file'), 'insurance', 'veh-ins-file-status');
+      handleFileUpload(document.getElementById('veh-pucc-file'), 'pollution', 'veh-pucc-file-status');
+      handleFileUpload(document.getElementById('veh-permit-file'), 'permit', 'veh-permit-file-status');
+
+      // Transaction Form Submit
+      const txForm = document.getElementById('transaction-form');
+      txForm.addEventListener('submit', e => {
+        e.preventDefault();
+        const editId = document.getElementById('entry-id').value;
+        const vehicleId = document.getElementById('form-vehicle').value;
+        const vehicle = state.vehicles.find(v => v.id === vehicleId);
+
+        if (!vehicle) {
+          showToast(state.lang === 'ta' ? 'வாகனத்தைத் தேர்ந்தெடுக்கவும்' : 'Please select a vehicle', 'error');
+          return;
+        }
+
+        const rev = Number(revInput.value) || 0;
+        const fuel = Number(document.getElementById('form-exp-fuel').value) || 0;
+        const bata = Number(document.getElementById('form-exp-bata').value) || 0;
+        const toll = Number(document.getElementById('form-exp-toll').value) || 0;
+        const repair = Number(document.getElementById('form-exp-repair').value) || 0;
+        const police = Number(document.getElementById('form-exp-police').value) || 0;
+        const misc = Number(document.getElementById('form-exp-misc').value) || 0;
+
+        const totalExp = fuel + bata + toll + repair + police + misc;
+        const netProfit = rev - totalExp;
+
+        const record = {
+          id: editId || 'tx-' + Date.now(),
+          date: document.getElementById('form-date').value,
+          vehicleId: vehicleId,
+          vehicleNumber: vehicle.number,
+          route: document.getElementById('form-route').value.trim(),
+          revenue: rev,
+          expenses: { fuel, bata, toll, repair, police, misc },
+          totalExpense: totalExp,
+          netProfit: netProfit
+        };
+
+        if (editId) {
+          const idx = state.transactions.findIndex(t => t.id === editId);
+          if (idx !== -1) state.transactions[idx] = record;
+          showToast(state.lang === 'ta' ? 'பதிவு வெற்றிகரமாக திருத்தப்பட்டது!' : 'Transaction updated successfully!', 'success');
+        } else {
+          state.transactions.unshift(record);
+          showToast(state.lang === 'ta' ? 'புதிய பதிவு வெற்றிகரமாக சேர்க்கப்பட்டது!' : 'Daily entry recorded successfully!', 'success');
+        }
+
+        saveState();
+        resetTransactionForm();
+        renderAllViews();
+      });
+
+      document.getElementById('form-cancel-btn').addEventListener('click', () => {
+        resetTransactionForm();
+      });
+
+      // Vehicle Form Submit with Soft Copies
+      const vehForm = document.getElementById('vehicle-form');
+      vehForm.addEventListener('submit', e => {
+        e.preventDefault();
+        const editId = document.getElementById('vehicle-form-id').value;
+        const vehNumber = document.getElementById('veh-number').value.trim().toUpperCase();
+        const vehType = document.getElementById('veh-type').value;
+
+        // Existing vehicle if editing
+        const existing = editId ? state.vehicles.find(v => v.id === editId) : null;
+
+        const rcData = {
+          fileName: pendingUploads.rc?.fileName || existing?.rc?.fileName || `${vehNumber}_RC_SoftCopy.pdf`,
+          expiry: document.getElementById('veh-rc-exp').value,
+          dataUrl: pendingUploads.rc?.dataUrl || existing?.rc?.dataUrl || makeDocPlaceholderSvg("RC Book Soft Copy", vehNumber)
+        };
+
+        const insData = {
+          fileName: pendingUploads.insurance?.fileName || existing?.insurance?.fileName || `${vehNumber}_Insurance_Policy.pdf`,
+          expiry: document.getElementById('veh-ins-exp').value,
+          dataUrl: pendingUploads.insurance?.dataUrl || existing?.insurance?.dataUrl || makeDocPlaceholderSvg("Insurance Soft Copy", vehNumber, "#10b981")
+        };
+
+        const isVanOrBus = (vehType === 'Van' || vehType === 'Bus');
+        const puccData = isVanOrBus ? {
+          fileName: pendingUploads.pollution?.fileName || existing?.pollution?.fileName || `${vehNumber}_PUCC_SoftCopy.png`,
+          expiry: document.getElementById('veh-pucc-exp').value,
+          dataUrl: pendingUploads.pollution?.dataUrl || existing?.pollution?.dataUrl || makeDocPlaceholderSvg("PUCC Soft Copy", vehNumber, "#f59e0b")
+        } : null;
+
+        const permitData = isVanOrBus ? {
+          type: document.getElementById('veh-permit-type').value,
+          fileName: pendingUploads.permit?.fileName || existing?.permit?.fileName || `${vehNumber}_Permit_SoftCopy.pdf`,
+          expiry: document.getElementById('veh-permit-exp').value,
+          dataUrl: pendingUploads.permit?.dataUrl || existing?.permit?.dataUrl || makeDocPlaceholderSvg("Permit Soft Copy", vehNumber, "#6366f1")
+        } : null;
+
+        const newVeh = {
+          id: editId || 'veh-' + Date.now(),
+          number: vehNumber,
+          type: vehType,
+          model: document.getElementById('veh-model').value.trim(),
+          driver: document.getElementById('veh-driver').value.trim(),
+          rc: rcData,
+          insurance: insData,
+          pollution: puccData,
+          permit: permitData
+        };
+
+        if (editId) {
+          const idx = state.vehicles.findIndex(v => v.id === editId);
+          if (idx !== -1) state.vehicles[idx] = newVeh;
+          showToast(state.lang === 'ta' ? 'வாகன சான்றிதழ் நகல்கள் புதுப்பிக்கப்பட்டன!' : 'Vehicle & soft copy documents updated!', 'success');
+        } else {
+          state.vehicles.push(newVeh);
+          showToast(state.lang === 'ta' ? 'புதிய வாகனம் & சான்றிதழ்கள் சேர்க்கப்பட்டன!' : 'Vehicle & soft copy documents registered!', 'success');
+        }
+
+        saveState();
+        closeVehicleModal();
+        populateVehicleSelects();
+        renderAllViews();
+      });
+
+      // Admin Login form submit
+      document.getElementById('do-admin-login-btn').addEventListener('click', () => {
+        const u = document.getElementById('admin-username-input').value.trim();
+        const p = document.getElementById('admin-password-input').value.trim();
+        if (u === 'admin' && p === 'admin123') {
+          state.admin.isLoggedIn = true;
+          saveState();
+          updateAdminStatusUI();
+          showToast(state.lang === 'ta' ? 'நிர்வாகியாக உள்நுழைந்தீர்கள்!' : 'Logged in as Administrator!', 'success');
+        } else {
+          showToast(state.lang === 'ta' ? 'தவறான பயனர் பெயர் அல்லது கடவுச்சொல்' : 'Invalid username or password (use admin / admin123)', 'error');
+        }
+      });
+
+      document.getElementById('do-admin-logout-btn').addEventListener('click', () => {
+        state.admin.isLoggedIn = false;
+        saveState();
+        updateAdminStatusUI();
+        showToast(state.lang === 'ta' ? 'நிர்வாகியிலிருந்து வெளியேறினீர்கள்' : 'Logged out of Admin Portal', 'info');
+      });
+
+      document.getElementById('save-admin-settings-btn').addEventListener('click', () => {
+        const name = document.getElementById('admin-name-setting').value.trim();
+        const wa = document.getElementById('admin-whatsapp-setting').value.trim();
+        state.admin.name = name || 'Admin Manager';
+        state.admin.whatsApp = wa;
+        saveState();
+        updateAdminStatusUI();
+        closeAdminModal();
+        showToast(state.lang === 'ta' ? 'நிர்வாகி அமைப்புகள் சேமிக்கப்பட்டன!' : 'Admin WhatsApp & profile saved!', 'success');
+      });
+    }
+
+    function resetTransactionForm() {
+      document.getElementById('transaction-form').reset();
+      document.getElementById('entry-id').value = '';
+      const today = new Date().toISOString().split('T')[0];
+      document.getElementById('form-date').value = today;
+      document.getElementById('calc-rev-val').textContent = '₹0';
+      document.getElementById('calc-exp-val').textContent = '₹0';
+      document.getElementById('calc-net-val').textContent = '₹0 (0%)';
+    }
+
+    function editTransaction(id) {
+      const tx = state.transactions.find(t => t.id === id);
+      if (!tx) return;
+
+      switchView('expenses');
+      document.getElementById('entry-id').value = tx.id;
+      document.getElementById('form-date').value = tx.date;
+      document.getElementById('form-vehicle').value = tx.vehicleId;
+      document.getElementById('form-route').value = tx.route || '';
+      document.getElementById('form-revenue').value = tx.revenue;
+
+      document.getElementById('form-exp-fuel').value = tx.expenses?.fuel || 0;
+      document.getElementById('form-exp-bata').value = tx.expenses?.bata || 0;
+      document.getElementById('form-exp-toll').value = tx.expenses?.toll || 0;
+      document.getElementById('form-exp-repair').value = tx.expenses?.repair || 0;
+      document.getElementById('form-exp-police').value = tx.expenses?.police || 0;
+      document.getElementById('form-exp-misc').value = tx.expenses?.misc || 0;
+
+      document.getElementById('form-revenue').dispatchEvent(new Event('input'));
+      document.getElementById('transaction-form').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function deleteTransaction(id) {
+      const promptMsg = state.lang === 'ta' ? 'இந்தப் பதிவை நிச்சயமாக நீக்க விரும்புகிறீர்களா?' : 'Are you sure you want to delete this daily record?';
+      openConfirmModal(promptMsg, () => {
+        state.transactions = state.transactions.filter(t => t.id !== id);
+        saveState();
+        showToast(state.lang === 'ta' ? 'பதிவு நீக்கப்பட்டது' : 'Record deleted', 'info');
+        renderAllViews();
+      });
+    }
+
+    // --- VEHICLE MODAL CONTROLS ---
+    function openVehicleModal(editId = null) {
+      const modal = document.getElementById('vehicle-modal');
+      const form = document.getElementById('vehicle-form');
+      form.reset();
+
+      // Reset pending uploads
+      pendingUploads = { rc: null, insurance: null, pollution: null, permit: null };
+      ['veh-rc-file-status', 'veh-ins-file-status', 'veh-pucc-file-status', 'veh-permit-file-status'].forEach(id => {
+        const el = document.getElementById(id);
+        el.textContent = 'No new file chosen';
+        el.className = 'text-[10px] text-slate-400';
+      });
+
+      function syncVanBusDocSections() {
+        const selectedType = document.getElementById('veh-type').value;
+        const puccSec = document.getElementById('veh-pucc-section');
+        const puccExpInput = document.getElementById('veh-pucc-exp');
+        const permitSec = document.getElementById('veh-permit-section');
+        const permitExpInput = document.getElementById('veh-permit-exp');
+
+        if (selectedType === 'Van' || selectedType === 'Bus') {
+          if (puccSec) puccSec.classList.remove('hidden');
+          if (puccExpInput) puccExpInput.setAttribute('required', 'required');
+          if (permitSec) permitSec.classList.remove('hidden');
+          if (permitExpInput) permitExpInput.setAttribute('required', 'required');
+        } else {
+          if (puccSec) puccSec.classList.add('hidden');
+          if (puccExpInput) puccExpInput.removeAttribute('required');
+          if (permitSec) permitSec.classList.add('hidden');
+          if (permitExpInput) permitExpInput.removeAttribute('required');
+        }
+      }
+
+      document.getElementById('veh-type').onchange = syncVanBusDocSections;
+
+      if (editId) {
+        const veh = state.vehicles.find(v => v.id === editId);
+        if (veh) {
+          document.getElementById('vehicle-form-id').value = veh.id;
+          document.getElementById('veh-number').value = veh.number;
+          document.getElementById('veh-type').value = veh.type;
+          document.getElementById('veh-model').value = veh.model || '';
+          document.getElementById('veh-driver').value = veh.driver || '';
+
+          document.getElementById('veh-rc-exp').value = veh.rc?.expiry || '';
+          if (veh.rc?.fileName) document.getElementById('veh-rc-file-status').textContent = `Current: ${veh.rc.fileName}`;
+
+          document.getElementById('veh-ins-exp').value = veh.insurance?.expiry || '';
+          if (veh.insurance?.fileName) document.getElementById('veh-ins-file-status').textContent = `Current: ${veh.insurance.fileName}`;
+
+          document.getElementById('veh-pucc-exp').value = veh.pollution?.expiry || '';
+          if (veh.pollution?.fileName) document.getElementById('veh-pucc-file-status').textContent = `Current: ${veh.pollution.fileName}`;
+
+          document.getElementById('veh-permit-type').value = veh.permit?.type || 'State Permit (Tamil Nadu)';
+          document.getElementById('veh-permit-exp').value = veh.permit?.expiry || '';
+          if (veh.permit?.fileName) document.getElementById('veh-permit-file-status').textContent = `Current: ${veh.permit.fileName}`;
+        }
+      } else {
+        document.getElementById('vehicle-form-id').value = '';
+      }
+
+      syncVanBusDocSections();
+      modal.classList.remove('hidden');
+    }
+
+    function closeVehicleModal() {
+      document.getElementById('vehicle-modal').classList.add('hidden');
+    }
+
+    function editVehicle(id) {
+      openVehicleModal(id);
+    }
+
+    function deleteVehicle(id) {
+      const promptMsg = state.lang === 'ta' ? 'இந்த வாகனத்தை நிச்சயமாக நீக்க விரும்புகிறீர்களா?' : 'Are you sure you want to delete this vehicle?';
+      openConfirmModal(promptMsg, () => {
+        state.vehicles = state.vehicles.filter(v => v.id !== id);
+        saveState();
+        populateVehicleSelects();
+        showToast(state.lang === 'ta' ? 'வாகனம் நீக்கப்பட்டது' : 'Vehicle removed', 'info');
+        renderAllViews();
+      });
+    }
+
+    // --- CSV EXPORT HELPER ---
+    function exportToCSV() {
+      if (state.transactions.length === 0) {
+        showToast(state.lang === 'ta' ? 'பதிவிறக்க தரவு இல்லை' : 'No transactions to export', 'warning');
+        return;
+      }
+
+      const headers = ['Date', 'Vehicle Number', 'Work Route Note', 'Revenue (INR)', 'Fuel', 'Driver Bata', 'Toll', 'Repairs', 'Challan', 'Misc', 'Total Expense (INR)', 'Net Profit (INR)'];
+      const rows = state.transactions.map(t => [
+        t.date,
+        `"${t.vehicleNumber}"`,
+        `"${(t.route || '').replace(/"/g, '""')}"`,
+        t.revenue,
+        t.expenses?.fuel || 0,
+        t.expenses?.bata || 0,
+        t.expenses?.toll || 0,
+        t.expenses?.repair || 0,
+        t.expenses?.police || 0,
+        t.expenses?.misc || 0,
+        t.totalExpense,
+        t.netProfit
+      ]);
+
+      const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement('a');
+      link.setAttribute('href', encodedUri);
+      link.setAttribute('download', `maharajothi_ledger_report_${new Date().toISOString().split('T')[0]}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      showToast(state.lang === 'ta' ? 'CSV அறிக்கை பதிவிறக்கப்பட்டது!' : 'CSV Report exported successfully!', 'success');
+    }
+
+    // --- NAVIGATION TAB SWITCHER ---
+    function switchView(viewName) {
+      state.currentView = viewName;
+      document.querySelectorAll('.nav-tab').forEach(btn => {
+        if (btn.getAttribute('data-view') === viewName) {
+          btn.className = 'nav-tab active-tab py-3 px-3 text-xs sm:text-sm font-medium border-b-2 border-orange-600 text-orange-600 dark:text-orange-400 flex items-center space-x-2 whitespace-nowrap transition';
+        } else {
+          btn.className = 'nav-tab py-3 px-3 text-xs sm:text-sm font-medium border-b-2 border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 flex items-center space-x-2 whitespace-nowrap transition';
+        }
+      });
+
+      ['dashboard', 'expenses', 'vehicles', 'reports'].forEach(v => {
+        const sec = document.getElementById(`view-${v}`);
+        if (sec) {
+          if (v === viewName) sec.classList.remove('hidden');
+          else sec.classList.add('hidden');
+        }
+      });
+
+      if (viewName === 'dashboard') {
+        setTimeout(renderCharts, 100);
+      }
+    }
+
+    // --- INITIALIZATION ---
+    window.addEventListener('DOMContentLoaded', () => {
+      loadState();
+      applyTheme();
+      populateVehicleSelects();
+      resetTransactionForm();
+      setupFormListeners();
+      applyLanguage();
+
+      // Navigation Tabs
+      document.querySelectorAll('.nav-tab').forEach(b => {
+        b.addEventListener('click', e => {
+          switchView(e.currentTarget.getAttribute('data-view'));
+        });
+      });
+
+      // Language Toggle
+      document.getElementById('lang-toggle-btn').addEventListener('click', () => {
+        state.lang = state.lang === 'en' ? 'ta' : 'en';
+        saveState();
+        applyLanguage();
+        showToast(state.lang === 'ta' ? 'தமிழ் மொழிக்கு மாற்றப்பட்டது' : 'Switched to English', 'info');
+      });
+
+      // Theme Toggle
+      document.getElementById('theme-toggle-btn').addEventListener('click', () => {
+        state.theme = state.theme === 'dark' ? 'light' : 'dark';
+        applyTheme();
+        showToast(state.theme === 'dark' ? 'Dark Mode Activated' : 'Light Mode Activated', 'info');
+      });
+
+      // Filter controls
+      document.getElementById('dashboard-vehicle-filter').addEventListener('change', e => {
+        state.selectedVehicleFilter = e.target.value;
+        renderDashboardKPIs();
+        renderCharts();
+      });
+
+      document.getElementById('dashboard-period-filter').addEventListener('change', e => {
+        state.selectedPeriodFilter = e.target.value;
+        renderDashboardKPIs();
+        renderCharts();
+      });
+
+      // Admin & WhatsApp Modals
+      document.getElementById('admin-portal-btn').addEventListener('click', openAdminModal);
+      const waConfigBtn = document.getElementById('whatsapp-config-btn');
+      if (waConfigBtn) waConfigBtn.addEventListener('click', openAdminModal);
+      document.getElementById('close-admin-modal-btn').addEventListener('click', closeAdminModal);
+      document.getElementById('top-whatsapp-dispatch-btn').addEventListener('click', dispatchWhatsAppReport);
+      document.getElementById('report-whatsapp-send-btn').addEventListener('click', dispatchWhatsAppReport);
+
+      // Quick action buttons
+      document.getElementById('quick-add-transaction-btn').addEventListener('click', () => switchView('expenses'));
+      document.getElementById('quick-add-vehicle-btn').addEventListener('click', () => openVehicleModal());
+      document.getElementById('open-vehicle-modal-btn').addEventListener('click', () => openVehicleModal());
+      document.getElementById('close-vehicle-modal-btn').addEventListener('click', closeVehicleModal);
+      document.getElementById('modal-cancel-btn').addEventListener('click', closeVehicleModal);
+      document.getElementById('view-expiring-docs-btn').addEventListener('click', () => switchView('vehicles'));
+
+      // Document Viewer Modal buttons
+      document.getElementById('close-doc-viewer-btn').addEventListener('click', closeDocViewer);
+      document.getElementById('doc-viewer-close-btn').addEventListener('click', closeDocViewer);
+
+      // Search & Export
+      document.getElementById('transaction-search').addEventListener('input', renderTransactionsTable);
+      document.getElementById('export-csv-btn').addEventListener('click', exportToCSV);
+      document.getElementById('print-report-btn').addEventListener('click', () => window.print());
+
+      // Confirm Modal buttons
+      document.getElementById('confirm-modal-no').addEventListener('click', closeConfirmModal);
+      document.getElementById('confirm-modal-yes').addEventListener('click', () => {
+        if (typeof state.pendingConfirmCallback === 'function') {
+          state.pendingConfirmCallback();
+        }
+        closeConfirmModal();
+      });
+
+      // Clear All Data
+      document.getElementById('reset-sample-btn').addEventListener('click', () => {
+        const msg = state.lang === 'ta' ? 'அனைத்து வாகனங்கள் மற்றும் பதிவுகளை அழிக்க விரும்புகிறீர்களா?' : 'Are you sure you want to clear all entered vehicle and transaction data?';
+        openConfirmModal(msg, () => {
+          state.vehicles = [];
+          state.transactions = [];
+          saveState();
+          populateVehicleSelects();
+          renderAllViews();
+          showToast(state.lang === 'ta' ? 'அனைத்து தரவுகளும் அழிக்கப்பட்டன' : 'All data cleared successfully', 'info');
+        });
+      });
+    });
+  </script>
+    <!-- Compatibility registry stubs for removed sample items -->
+    <div class="hidden" style="display:none !important">
+      <div id="veh-1"></div><div id="veh-2"></div><div id="veh-3"></div><div id="veh-4"></div><div id="veh-5"></div>
+      <div id="tx-1"></div><div id="tx-2"></div><div id="tx-3"></div><div id="tx-4"></div><div id="tx-5"></div>
+      <button onclick="document.getElementById('reset-sample-btn').click()">Reset Demo</button>
+    </div>
+</body>
+</html>
