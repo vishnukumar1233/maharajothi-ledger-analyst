@@ -478,10 +478,11 @@ def export_csv():
 
 
 if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 5000))
     print("=" * 60)
     print("MAHARAJOTHI LEDGER - PYTHON APPLICATION SERVER")
     print("Main Programming Language: Python 3")
     print("SQLite Database: maharajothi.db (Clean & Empty state)")
-    print("Serving on: http://127.0.0.1:5000")
+    print(f"Serving on: http://0.0.0.0:{port}")
     print("=" * 60)
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    app.run(host="0.0.0.0", port=port, debug=False)
